@@ -1,0 +1,139 @@
+:root{
+  --bg:#ffffff;
+  --fg:#0f172a; /* slate-900 */
+  --muted:#64748b; /* slate-500 */
+  --accent:#4f46e5; /* indigo-600 */
+  --chip:#f4f6ff; /* soft indigo tint */
+  --border:#e5e7eb; /* gray-200 */
+  --sidebar:#f8fafc; /* slate-50 */
+  --radius:14px;
+  --shadow:0 1px 2px rgba(2,6,23,.06), 0 8px 24px rgba(2,6,23,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root{
+    --bg:#0b0c0f;
+    --fg:#e5e7eb; /* gray-200 */
+    --muted:#9aa4b2; /* slate-400 */
+    --accent:#8b95ff; /* indigo-400 */
+    --chip:#171a23; /* soft surface */
+    --border:#1f2430; /* dark stroke */
+    --sidebar:#10131a; /* elevated surface */
+    --shadow:0 1px 2px rgba(0,0,0,.2), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+::selection{background:color-mix(in oklab, var(--accent) 22%, transparent);color:var(--fg)}
+
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+
+.page{max-width:1100px;margin:0 auto;padding:28px}
+
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:28px}
+.name{font-weight:800;font-size:clamp(26px,5vw,40px);letter-spacing:.2px}
+.title{font-weight:500;color:var(--muted);margin-top:6px}
+
+/* Profile photo in header */
+.identity{display:flex;align-items:center;gap:14px}
+.avatar{width:clamp(72px,10vw,92px);height:clamp(72px,10vw,92px);border-radius:50%;object-fit:cover;border:1px solid var(--border);box-shadow:var(--shadow)}
+
+.actions{display:flex;gap:10px;align-items:center}
+.print-website{display:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);padding:9px 13px;border-radius:12px;color:var(--fg);background:transparent;line-height:1.2;cursor:pointer;transition:background .2s ease,border-color .2s ease,transform .06s ease}
+.btn:hover{background:var(--chip);border-color:color-mix(in oklab, var(--accent) 25%, var(--border))}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:3px solid color-mix(in oklab, var(--accent) 40%, transparent);outline-offset:2px}
+button.btn{-webkit-appearance:none;appearance:none;font:inherit;color:inherit;background:transparent;border:1px solid var(--border);padding:9px 13px;border-radius:12px}
+
+main{display:grid;grid-template-columns:320px 1fr;gap:32px}
+
+aside{background:var(--sidebar);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:sticky;top:12px;height:fit-content;box-shadow:var(--shadow)}
+
+section{margin-bottom:26px}
+h2{font-size:clamp(14px,1.4vw,18px);margin:0 0 12px 0;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+
+.list{margin:0;padding-left:12px}
+
+.chip{display:inline-block;background:var(--chip);border:1px solid var(--border);padding:6px 10px;border-radius:999px;margin:4px 6px 0 0;font-size:13.5px;transition:background .2s ease,border-color .2s ease}
+.chip:hover{background:color-mix(in oklab, var(--accent) 8%, var(--chip));border-color:color-mix(in oklab, var(--accent) 18%, var(--border))}
+
+.kv{display:grid;grid-template-columns:22px 1fr;gap:10px;margin:6px 0}
+.kv svg,.kv img{opacity:.7}
+.kv a{color:inherit;text-decoration:none}
+
+.profile{border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.profile h3{margin:12px 0 4px 0; padding:0 0 0 0; font-size:16px}
+.profile p{margin:0 0 4px 0;}
+
+.job{border-left:3px solid var(--accent);padding-left:16px;margin:20px 0}
+.job h3{margin:0 0 4px 0;font-size:18px}
+.job h3.role{font-weight:600}
+.job .subhead{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:14.5px;margin-bottom:8px}
+.job .subhead .company-left{display:flex;align-items:center;gap:8px;min-width:0}
+.job .subhead .logo{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:24px;height:24px;object-fit:contain}
+.job .subhead .company-name{font-weight:600;color:var(--fg)}
+.job .subhead .when-where{white-space:nowrap;color:var(--muted)}
+.job ul{margin:.25rem 0 .25rem .6rem}
+
+.edu-item{margin:10px 0;color:var(--muted)}
+
+.lang{display:flex;gap:10px;flex-wrap:wrap}
+.lang .chip{margin:0}
+
+footer{margin-top:28px;color:var(--muted);font-size:13px}
+
+@media (max-width: 860px){
+  main{grid-template-columns:1fr}
+  aside{position:static}
+  header{align-items:flex-start}
+  .job .subhead{flex-direction:column;align-items:flex-start}
+  .job .subhead .when-where{white-space:normal}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important}
+}
+
+@media print{
+  /* Preserve on-screen color theme and backgrounds */
+  html,body{background:var(--bg) !important;color:var(--fg) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+  /* Keep layout similar to regular: two columns (aside + main content) */
+  .actions{display:none}
+  .print-website{display:block}
+  main{display:grid;grid-template-columns:320px 1fr;gap:32px}
+  aside{position:static;background:var(--sidebar);border:1px solid var(--border);box-shadow:none}
+
+  /* Links keep accent color but no underlines for cleaner print */
+  a{color:var(--accent);text-decoration:none}
+
+  /* Avoid awkward breaks inside blocks */
+  header,section,.profile,.job,.skill-tile{break-inside:avoid;page-break-inside:avoid}
+  .job ul,.list{margin-top:.25rem}
+
+  /* Slightly tighten spacing for print */
+  .page{padding:18px}
+}
+
+/* Make LinkedIn icon dark in light mode and light in dark mode */
+.kv img{filter:invert(1)}
+@media (prefers-color-scheme: dark){
+  .kv img{filter:none}
+}
+
+/* Manager skill tiles */
+.skill-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.skill-tile{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:10px 12px;transition:background .2s ease,border-color .2s ease,transform .06s ease}
+.skill-tile:hover{background:color-mix(in oklab, var(--accent) 6%, var(--chip));border-color:color-mix(in oklab, var(--accent) 14%, var(--border))}
+.skill-title{font-weight:600;font-size:13.5px;line-height:1.4}
+.skill-desc{color:var(--muted);font-size:12.5px;margin-top:4px;line-height:1.45}
+
+/* Editable markers — search for "EDIT:" to quickly find fields */
+
+
+/* Force 2 columns for Technical Skills */
+.skill-tiles.two-cols{grid-template-columns:repeat(2,1fr)}

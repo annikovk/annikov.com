@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="3676d41e-9ed7-4b53-8681-740c038ee526" name="annikov.com" url="http://annikov.com">
+        <fileTransfer rootFolder="/var/www/vhosts/annikov.com" accessType="SFTP" host="annikov.com" port="29562" sshConfigId="223d5617-7bbe-4b74-9069-d859ceb1767f" sshConfig="n97wVJ82gf@annikov.com:29562 agent" authAgent="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" isUseSudo="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
