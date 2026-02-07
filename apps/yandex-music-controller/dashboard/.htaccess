@@ -1,0 +1,4 @@
+AuthType Basic
+AuthName "Action Tracker Dashboard"
+AuthUserFile /var/www/vhosts/annikov.com/httpdocs/apps/yandex-music-controller/dashboard/.htpasswd
+Require valid-user
