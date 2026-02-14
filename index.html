@@ -12,120 +12,266 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-primary: #fafafa;
+            --bg-secondary: #ffffff;
+            --text-primary: #0a0a0a;
+            --text-secondary: #525252;
+            --text-tertiary: #a3a3a3;
+            --accent: #0a0a0a;
+            --border: #e5e5e5;
+            --hover-bg: #f5f5f5;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #0a0a0a;
+                --bg-secondary: #171717;
+                --text-primary: #fafafa;
+                --text-secondary: #a3a3a3;
+                --text-tertiary: #525252;
+                --accent: #fafafa;
+                --border: #262626;
+                --hover-bg: #262626;
+                --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+                --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+                --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.8);
+            }
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 24px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .container {
-            background: white;
-            border-radius: 20px;
-            padding: 60px 40px;
-            max-width: 500px;
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 72px 48px;
+            max-width: 520px;
             width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .profile {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 56px;
         }
 
         .profile img {
-            width: 120px;
-            height: 120px;
+            width: 96px;
+            height: 96px;
             border-radius: 50%;
-            margin-bottom: 20px;
-            border: 4px solid #667eea;
+            margin-bottom: 24px;
+            border: 2px solid var(--border);
+            object-fit: cover;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .profile img:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
         }
 
         h1 {
-            font-size: 32px;
-            color: #2d3748;
+            font-size: 36px;
+            font-weight: 600;
+            color: var(--text-primary);
             margin-bottom: 8px;
+            letter-spacing: -0.02em;
         }
 
         .subtitle {
-            font-size: 18px;
-            color: #718096;
-            margin-bottom: 30px;
+            font-size: 17px;
+            color: var(--text-secondary);
+            font-weight: 400;
+            letter-spacing: -0.01em;
         }
 
         .links {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 12px;
+            margin-bottom: 48px;
         }
 
         .link-item {
             display: flex;
             align-items: center;
-            padding: 16px 20px;
-            background: #f7fafc;
-            border-radius: 12px;
+            padding: 18px 20px;
+            background: transparent;
+            border-radius: 16px;
             text-decoration: none;
-            color: #2d3748;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
+            color: var(--text-primary);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .link-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--hover-bg);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .link-item:hover::before {
+            opacity: 1;
         }
 
         .link-item:hover {
-            background: #edf2f7;
-            border-color: #667eea;
-            transform: translateY(-2px);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .link-item:active {
+            transform: translateY(0);
         }
 
         .link-item img {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             margin-right: 16px;
-            filter: invert(41%) sepia(82%) saturate(1653%) hue-rotate(221deg) brightness(95%) contrast(91%);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+            filter: invert(1); /* Convert white icons to black for light mode */
+        }
+
+        .link-item:hover img {
+            opacity: 1;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .link-item img {
+                filter: none; /* Keep white icons white in dark mode */
+                opacity: 0.8;
+            }
+
+            .link-item:hover img {
+                opacity: 1;
+            }
         }
 
         .link-item .icon {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             margin-right: 16px;
             flex-shrink: 0;
+            position: relative;
+            z-index: 1;
         }
 
         .link-text {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 500;
+            letter-spacing: -0.01em;
+            position: relative;
+            z-index: 1;
         }
 
         .location {
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: 30px;
-            color: #718096;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+            color: var(--text-tertiary);
             font-size: 14px;
+            letter-spacing: -0.01em;
         }
 
         .location img {
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             margin-right: 8px;
-            filter: invert(50%) sepia(10%) saturate(800%) hue-rotate(180deg) brightness(95%) contrast(85%);
+            opacity: 0.5;
+            filter: invert(1); /* Convert white icon to black for light mode */
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .location img {
+                filter: none; /* Keep white icon white in dark mode */
+            }
         }
 
         @media (max-width: 600px) {
+            body {
+                padding: 16px;
+            }
+
             .container {
-                padding: 40px 30px;
+                padding: 48px 32px;
+                border-radius: 20px;
             }
 
             h1 {
-                font-size: 28px;
+                font-size: 32px;
             }
 
             .subtitle {
                 font-size: 16px;
+            }
+
+            .profile {
+                margin-bottom: 40px;
+            }
+
+            .profile img {
+                width: 80px;
+                height: 80px;
+            }
+
+            .links {
+                gap: 10px;
+                margin-bottom: 40px;
+            }
+
+            .link-item {
+                padding: 16px 18px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .container {
+                padding: 40px 24px;
+            }
+
+            h1 {
+                font-size: 28px;
             }
         }
     </style>
@@ -149,9 +295,9 @@
             <span class="link-text">Telegram</span>
         </a>
 
-        <a href="mailto:annikovk@gmail.com" class="link-item">
+        <a href="#" class="link-item" id="email-link" data-contact="YW5uaWtvdmtAZ21haWwuY29t">
             <img src="assets/images/mail.svg" alt="Email" class="icon"/>
-            <span class="link-text">annikovk@gmail.com</span>
+            <span class="link-text">Email</span>
         </a>
 
         <a href="https://linkedin.com/in/annikovk" class="link-item" target="_blank">
@@ -175,5 +321,32 @@
         <span>Amsterdam, Netherlands</span>
     </div>
 </div>
+
+<script>
+    // Anti-scraper email protection
+    (function() {
+        const emailLink = document.getElementById('email-link');
+        if (emailLink) {
+            const encoded = emailLink.getAttribute('data-contact');
+            const email = atob(encoded);
+            emailLink.href = 'mailto:' + email;
+
+            // Optional: Show email on hover (more user-friendly)
+            emailLink.addEventListener('mouseenter', function() {
+                const textSpan = this.querySelector('.link-text');
+                textSpan.setAttribute('data-original', textSpan.textContent);
+                textSpan.textContent = email;
+            });
+
+            emailLink.addEventListener('mouseleave', function() {
+                const textSpan = this.querySelector('.link-text');
+                const original = textSpan.getAttribute('data-original');
+                if (original) {
+                    textSpan.textContent = original;
+                }
+            });
+        }
+    })();
+</script>
 </body>
 </html>
