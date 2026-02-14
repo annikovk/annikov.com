@@ -17,22 +17,23 @@ try {
     // Get statistics
     $stats = $tracker->getStats();
     $topActions = $tracker->getTopActions(10);
-    $recentActions = $tracker->getRecentActions(100);
+    $visitorSummary = $tracker->getVisitorSummary();
 
     // Handle CSV export
     if (isset($_GET['export']) && $_GET['export'] === 'csv') {
         header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="action-tracker-export-' . date('Y-m-d') . '.csv"');
+        header('Content-Disposition: attachment; filename="visitor-summary-export-' . date('Y-m-d') . '.csv"');
 
         $output = fopen('php://output', 'w');
-        fputcsv($output, ['Action Name', 'Timestamp', 'Date', 'IP Address']);
+        fputcsv($output, ['IP Address', 'Actions Used', 'Total Actions', 'First Executed', 'Last Executed']);
 
-        foreach ($recentActions as $action) {
+        foreach ($visitorSummary as $visitor) {
             fputcsv($output, [
-                $action['action_name'],
-                $action['timestamp'],
-                date('Y-m-d H:i:s', $action['timestamp']),
-                $action['ip_address'] ?? 'N/A'
+                $visitor['ip_address'],
+                $visitor['actions_used'],
+                $visitor['total_actions'],
+                $visitor['first_executed'],
+                $visitor['last_executed']
             ]);
         }
 
@@ -43,7 +44,7 @@ try {
 } catch (Exception $e) {
     $stats = [];
     $topActions = [];
-    $recentActions = [];
+    $visitorSummary = [];
 }
 ?>
 <!DOCTYPE html>
@@ -198,6 +199,35 @@ try {
             color: #999;
         }
 
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 20px;
+        }
+
+        .sortable:hover {
+            background: #e9ecef;
+        }
+
+        .sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 8px;
+            opacity: 0.3;
+            font-size: 12px;
+        }
+
+        .sortable.asc::after {
+            content: '▲';
+            opacity: 1;
+        }
+
+        .sortable.desc::after {
+            content: '▼';
+            opacity: 1;
+        }
+
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -269,20 +299,20 @@ try {
         <?php if (!empty($topActions)): ?>
         <div class="section">
             <h2>Top 10 Most Popular Actions</h2>
-            <table>
+            <table id="topActionsTable">
                 <thead>
                     <tr>
-                        <th>Action Name</th>
-                        <th style="text-align: right;">Total Count</th>
-                        <th style="text-align: right;">Unique Visitors</th>
+                        <th class="sortable" data-column="0" data-type="string">Action Name</th>
+                        <th class="sortable" data-column="1" data-type="number" style="text-align: right;">Total Count</th>
+                        <th class="sortable" data-column="2" data-type="number" style="text-align: right;">Unique Visitors</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($topActions as $action): ?>
                     <tr>
                         <td><?= htmlspecialchars($action['action_name']) ?></td>
-                        <td style="text-align: right;"><?= number_format($action['total_count']) ?></td>
-                        <td style="text-align: right;"><?= number_format($action['unique_visitors']) ?></td>
+                        <td style="text-align: right;" data-value="<?= $action['total_count'] ?>"><?= number_format($action['total_count']) ?></td>
+                        <td style="text-align: right;" data-value="<?= $action['unique_visitors'] ?>"><?= number_format($action['unique_visitors']) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -290,23 +320,27 @@ try {
         </div>
         <?php endif; ?>
 
-        <?php if (!empty($recentActions)): ?>
+        <?php if (!empty($visitorSummary)): ?>
         <div class="section">
-            <h2>Recent 100 Actions</h2>
-            <table>
+            <h2>Visitor Summary</h2>
+            <table id="visitorSummaryTable">
                 <thead>
                     <tr>
-                        <th>Action Name</th>
-                        <th>Timestamp</th>
-                        <th>IP Address</th>
+                        <th class="sortable" data-column="0" data-type="ip">IP Address</th>
+                        <th class="sortable" data-column="1" data-type="string">Actions Used</th>
+                        <th class="sortable" data-column="2" data-type="number" style="text-align: right;">Total Actions</th>
+                        <th class="sortable" data-column="3" data-type="date">First Executed</th>
+                        <th class="sortable" data-column="4" data-type="date">Last Executed</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($recentActions as $action): ?>
+                    <?php foreach ($visitorSummary as $visitor): ?>
                     <tr>
-                        <td><?= htmlspecialchars($action['action_name']) ?></td>
-                        <td class="timestamp"><?= date('Y-m-d H:i:s', $action['timestamp']) ?></td>
-                        <td><?= htmlspecialchars($action['ip_address'] ?? 'N/A') ?></td>
+                        <td><?= htmlspecialchars($visitor['ip_address']) ?></td>
+                        <td style="max-width: 400px; word-wrap: break-word;"><?= htmlspecialchars($visitor['actions_used']) ?></td>
+                        <td style="text-align: right;" data-value="<?= $visitor['total_actions'] ?>"><?= number_format($visitor['total_actions']) ?></td>
+                        <td class="timestamp" data-value="<?= htmlspecialchars($visitor['first_executed']) ?>"><?= htmlspecialchars($visitor['first_executed']) ?></td>
+                        <td class="timestamp" data-value="<?= htmlspecialchars($visitor['last_executed']) ?>"><?= htmlspecialchars($visitor['last_executed']) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -314,7 +348,7 @@ try {
         </div>
         <?php else: ?>
         <div class="section">
-            <div class="no-data">No actions tracked yet</div>
+            <div class="no-data">No visitors tracked yet</div>
         </div>
         <?php endif; ?>
     </div>
@@ -334,6 +368,69 @@ try {
                 document.getElementById('autoRefreshStatus').textContent = 'OFF';
             }
         }
+
+        // Table sorting functionality
+        function sortTable(table, column, type, direction) {
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                let aVal = a.cells[column].getAttribute('data-value') || a.cells[column].textContent.trim();
+                let bVal = b.cells[column].getAttribute('data-value') || b.cells[column].textContent.trim();
+
+                // Convert values based on type
+                if (type === 'number') {
+                    aVal = parseFloat(aVal.replace(/,/g, '')) || 0;
+                    bVal = parseFloat(bVal.replace(/,/g, '')) || 0;
+                } else if (type === 'date') {
+                    aVal = new Date(aVal).getTime() || 0;
+                    bVal = new Date(bVal).getTime() || 0;
+                } else if (type === 'ip') {
+                    // Sort IP addresses correctly (e.g., 192.168.1.1)
+                    aVal = aVal.split('.').map(num => num.padStart(3, '0')).join('.');
+                    bVal = bVal.split('.').map(num => num.padStart(3, '0')).join('.');
+                } else {
+                    // String comparison (case-insensitive)
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // Re-append rows in sorted order
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Initialize sorting for all tables
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const table = this.closest('table');
+                    const column = parseInt(this.getAttribute('data-column'));
+                    const type = this.getAttribute('data-type');
+
+                    // Toggle sort direction
+                    let direction = 'asc';
+                    if (this.classList.contains('asc')) {
+                        direction = 'desc';
+                    }
+
+                    // Remove sort classes from all headers in this table
+                    table.querySelectorAll('.sortable').forEach(h => {
+                        h.classList.remove('asc', 'desc');
+                    });
+
+                    // Add sort class to clicked header
+                    this.classList.add(direction);
+
+                    // Sort the table
+                    sortTable(table, column, type, direction);
+                });
+            });
+        });
     </script>
 </body>
 </html>

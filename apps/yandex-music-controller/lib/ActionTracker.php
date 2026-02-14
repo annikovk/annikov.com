@@ -256,6 +256,31 @@ class ActionTracker
     }
 
     /**
+     * Get visitor summary grouped by IP address
+     *
+     * @return array Visitor data with actions used and execution timestamps
+     */
+    public function getVisitorSummary(): array
+    {
+        try {
+            return $this->db->fetchAll(
+                'SELECT
+                    ip_address,
+                    GROUP_CONCAT(DISTINCT action_name ORDER BY action_name SEPARATOR \', \') AS actions_used,
+                    FROM_UNIXTIME(MIN(timestamp)) AS first_executed,
+                    FROM_UNIXTIME(MAX(timestamp)) AS last_executed,
+                    COUNT(*) as total_actions
+                 FROM actions
+                 WHERE ip_address IS NOT NULL
+                 GROUP BY ip_address
+                 ORDER BY ip_address'
+            );
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    /**
      * Extract request metadata
      *
      * @return array Metadata (ip, user_agent, referer)
