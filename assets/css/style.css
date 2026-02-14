@@ -24,17 +24,18 @@
 
 *{box-sizing:border-box}
 html{color-scheme:light dark}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;font-weight:400;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 
-::selection{background:color-mix(in oklab, var(--accent) 22%, transparent);color:var(--fg)}
+::selection{background:color-mix(in oklab, var(--accent) 30%, transparent);color:var(--fg)}
 
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline;text-underline-offset:2px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
 
-.page{max-width:1100px;margin:0 auto;padding:28px}
+.page{max-width:1100px;margin:0 auto;padding:32px}
 
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:28px}
-.name{font-weight:800;font-size:clamp(26px,5vw,40px);letter-spacing:.2px}
+.name{font-weight:800;font-size:clamp(28px,5.5vw,44px);letter-spacing:-0.01em;line-height:1.1}
 .title{font-weight:500;color:var(--muted);margin-top:6px}
 
 /* Profile photo in header */
@@ -43,53 +44,62 @@ header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
 
 .actions{display:flex;gap:10px;align-items:center}
 .print-website{display:none}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);padding:9px 13px;border-radius:12px;color:var(--fg);background:transparent;line-height:1.2;cursor:pointer;transition:background .2s ease,border-color .2s ease,transform .06s ease}
-.btn:hover{background:var(--chip);border-color:color-mix(in oklab, var(--accent) 25%, var(--border))}
-.btn:active{transform:translateY(1px)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);padding:10px 16px;border-radius:10px;color:var(--fg);background:transparent;line-height:1.2;cursor:pointer;font-weight:500;font-size:14.5px;transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .06s ease}
+.btn:hover{background:var(--chip);border-color:color-mix(in oklab, var(--accent) 30%, var(--border));box-shadow:0 1px 3px rgba(2,6,23,.08)}
+.btn:active{transform:translateY(1px);box-shadow:none}
 .btn:focus-visible{outline:3px solid color-mix(in oklab, var(--accent) 40%, transparent);outline-offset:2px}
-button.btn{-webkit-appearance:none;appearance:none;font:inherit;color:inherit;background:transparent;border:1px solid var(--border);padding:9px 13px;border-radius:12px}
+button.btn{-webkit-appearance:none;appearance:none;font:inherit;color:inherit;background:transparent;border:1px solid var(--border);padding:10px 16px;border-radius:10px;font-weight:500;font-size:14.5px}
 
-main{display:grid;grid-template-columns:320px 1fr;gap:32px}
+main{display:grid;grid-template-columns:320px 1fr;gap:40px}
 
-aside{background:var(--sidebar);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:sticky;top:12px;height:fit-content;box-shadow:var(--shadow)}
+aside{background:var(--sidebar);border:1px solid var(--border);border-radius:var(--radius);padding:24px;position:sticky;top:12px;height:fit-content;box-shadow:var(--shadow)}
 
-section{margin-bottom:26px}
-h2{font-size:clamp(14px,1.4vw,18px);margin:0 0 12px 0;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+section{margin-bottom:34px}
+h2{font-size:clamp(16px,1.6vw,20px);margin:0 0 14px 0;letter-spacing:0.01em;color:var(--accent);font-weight:700}
 
 .list{margin:0;padding-left:12px}
 
-.chip{display:inline-block;background:var(--chip);border:1px solid var(--border);padding:6px 10px;border-radius:999px;margin:4px 6px 0 0;font-size:13.5px;transition:background .2s ease,border-color .2s ease}
-.chip:hover{background:color-mix(in oklab, var(--accent) 8%, var(--chip));border-color:color-mix(in oklab, var(--accent) 18%, var(--border))}
+.chip{display:inline-block;background:var(--chip);border:1px solid var(--border);padding:7px 12px;border-radius:999px;margin:4px 6px 0 0;font-size:13.5px;font-weight:600;transition:background .2s ease,border-color .2s ease}
+.chip:hover{background:color-mix(in oklab, var(--accent) 10%, var(--chip));border-color:color-mix(in oklab, var(--accent) 22%, var(--border))}
 
-.kv{display:grid;grid-template-columns:22px 1fr;gap:10px;margin:6px 0}
-.kv svg,.kv img{opacity:.7}
+.kv{display:grid;grid-template-columns:24px 1fr;gap:12px;margin:8px 0}
+.kv svg,.kv img{opacity:.85;transition:opacity .2s ease}
+.kv:hover svg,.kv:hover img{opacity:1}
 .kv a{color:inherit;text-decoration:none}
 
-.profile{border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
-.profile h3{margin:12px 0 4px 0; padding:0 0 0 0; font-size:16px}
-.profile p{margin:0 0 4px 0;}
+.profile{border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);background:color-mix(in oklab, var(--accent) 2%, var(--sidebar))}
+.profile h3{margin:12px 0 6px 0;padding:0;font-size:16px;color:var(--accent)}
+.profile p{margin:0 0 8px 0}
+.profile p:last-of-type{font-weight:500}
 
-.job{border-left:3px solid var(--accent);padding-left:16px;margin:20px 0}
-.job h3{margin:0 0 4px 0;font-size:18px}
-.job h3.role{font-weight:600}
-.job .subhead{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:14.5px;margin-bottom:8px}
+.job{border-left:3px solid var(--accent);padding-left:18px;margin:28px 0}
+.job h3{margin:0 0 4px 0;font-size:19px}
+.job h3.role{font-weight:700;letter-spacing:-0.005em}
+.job .subhead{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:14.5px;margin-bottom:10px;font-weight:500}
 .job .subhead .company-left{display:flex;align-items:center;gap:8px;min-width:0}
-.job .subhead .logo{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:24px;height:24px;object-fit:contain}
-.job .subhead .company-name{font-weight:600;color:var(--fg)}
+.job .subhead .logo{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:36px;height:36px;object-fit:contain;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:4px}
+.job .subhead .company-name{font-weight:700;color:var(--fg);letter-spacing:-0.01em}
 .job .subhead .when-where{white-space:nowrap;color:var(--muted)}
 .job ul{margin:.25rem 0 .25rem .6rem}
 
-.edu-item{margin:10px 0;color:var(--muted)}
+.edu-item{margin:10px 0;color:var(--fg)}
+.edu-item .university{display:block;margin-bottom:4px;font-weight:600}
 
 .lang{display:flex;gap:10px;flex-wrap:wrap}
 .lang .chip{margin:0}
 
+strong,b{font-weight:700;color:var(--fg)}
+
 footer{margin-top:28px;color:var(--muted);font-size:13px}
 
 @media (max-width: 860px){
-  main{grid-template-columns:1fr}
-  aside{position:static}
-  header{align-items:flex-start}
+  main{grid-template-columns:1fr;gap:28px}
+  aside{position:static;padding:20px}
+  header{align-items:flex-start;flex-wrap:wrap}
+  .identity{gap:12px}
+  .page{padding:20px}
+  section{margin-bottom:28px}
+  .job{margin:22px 0;padding-left:16px}
   .job .subhead{flex-direction:column;align-items:flex-start}
   .job .subhead .when-where{white-space:normal}
 }
@@ -98,39 +108,102 @@ footer{margin-top:28px;color:var(--muted);font-size:13px}
   *{transition:none !important}
 }
 
+@media (prefers-contrast: more){
+  .chip,.profile,.aside,.skill-tile{border-width:2px}
+  .btn{border-width:2px}
+}
+
 @media print{
   /* Preserve on-screen color theme and backgrounds */
-  html,body{background:var(--bg) !important;color:var(--fg) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{background:var(--bg) !important;color:var(--fg) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:14px;line-height:1.4}
 
   /* Keep layout similar to regular: two columns (aside + main content) */
   .actions{display:none}
   .print-website{display:block}
-  main{display:grid;grid-template-columns:320px 1fr;gap:32px}
-  aside{position:static;background:var(--sidebar);border:1px solid var(--border);box-shadow:none}
+  main{display:grid;grid-template-columns:240px 1fr;gap:20px}
+  aside{position:static;background:var(--sidebar);border:1px solid var(--border);box-shadow:none;padding:12px}
 
   /* Links keep accent color but no underlines for cleaner print */
   a{color:var(--accent);text-decoration:none}
 
   /* Avoid awkward breaks inside blocks */
   header,section,.profile,.job,.skill-tile{break-inside:avoid;page-break-inside:avoid}
-  .job ul,.list{margin-top:.25rem}
+  .job ul,.list{margin-top:.1rem;margin-bottom:.1rem}
 
-  /* Slightly tighten spacing for print */
-  .page{padding:18px}
+  /* Extremely compact print layout to fit on one page */
+  .page{padding:12px;max-width:100%}
+
+  /* Compact header */
+  header{margin-bottom:14px;padding-bottom:10px;gap:12px}
+  .avatar{width:56px !important;height:56px !important}
+  .identity{gap:10px}
+  .name{font-size:28px !important;line-height:1;margin:0}
+  .title{font-size:14px;margin-top:3px}
+
+  /* Compact sections */
+  section{margin-bottom:12px}
+  section:last-child{margin-bottom:0}
+  h2{font-size:15px;margin-bottom:8px;font-weight:700}
+
+  /* Compact jobs */
+  .job{margin:10px 0;padding-left:12px;border-left-width:2px}
+  .job:first-child{margin-top:0}
+  .job h3{font-size:16px;margin-bottom:2px}
+  .job .subhead{margin-bottom:5px;font-size:13px}
+  .job .subhead .logo{width:28px !important;height:28px !important;padding:3px}
+  .job ul{margin:.1rem 0 .1rem .5rem;padding:0}
+  .job li{margin-bottom:1px;line-height:1.4}
+
+  /* Compact profile */
+  .profile{padding:10px;margin-top:0}
+  .profile h3{margin:6px 0 3px 0;font-size:15px}
+  .profile p{margin:0 0 4px 0;font-size:13.5px;line-height:1.4}
+
+  /* Compact contact */
+  .kv{margin:5px 0;gap:8px;grid-template-columns:20px 1fr}
+  .kv svg,.kv img{width:18px !important;height:18px !important}
+
+  /* Compact chips */
+  .chip{padding:4px 8px;font-size:12px;margin:2px 3px 0 0}
+
+  /* Compact skill tiles */
+  .skill-tiles{gap:6px;grid-template-columns:repeat(2,1fr)}
+  .skill-tiles:not(.two-cols){grid-template-columns:1fr}
+  .skill-tile{padding:8px 10px}
+  .skill-title{font-size:12.5px;line-height:1.3}
+  .skill-desc{font-size:11px;margin-top:3px;line-height:1.3}
+
+  /* Compact education */
+  .edu-item{margin:6px 0;font-size:13.5px;line-height:1.4}
+  .edu-item .university{margin-bottom:2px}
+
+  /* Compact footer */
+  footer{margin-top:12px;font-size:11px}
+
+  /* Disable hover effects in print */
+  .chip:hover,.skill-tile:hover,.btn:hover{background:var(--chip);border-color:var(--border);transform:none;box-shadow:none}
 }
 
 /* Make LinkedIn icon dark in light mode and light in dark mode */
-.kv img{filter:invert(1)}
+.kv img[alt*="LinkedIn"]{filter:invert(1)}
 @media (prefers-color-scheme: dark){
-  .kv img{filter:none}
+  :root{
+    /* Adjust profile background for dark mode */
+    --profile-bg:color-mix(in oklab, var(--accent) 3%, var(--sidebar));
+  }
+  .kv img[alt*="LinkedIn"]{filter:none}
+  .profile{background:var(--profile-bg)}
 }
 
+/* General icon sizing */
+.kv svg,.kv img{width:22px;height:22px}
+
 /* Manager skill tiles */
-.skill-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-.skill-tile{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:10px 12px;transition:background .2s ease,border-color .2s ease,transform .06s ease}
-.skill-tile:hover{background:color-mix(in oklab, var(--accent) 6%, var(--chip));border-color:color-mix(in oklab, var(--accent) 14%, var(--border))}
-.skill-title{font-weight:600;font-size:13.5px;line-height:1.4}
-.skill-desc{color:var(--muted);font-size:12.5px;margin-top:4px;line-height:1.45}
+.skill-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px}
+.skill-tile{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:14px 16px;transition:background .2s ease,border-color .2s ease,transform .1s ease,box-shadow .2s ease}
+.skill-tile:hover{background:color-mix(in oklab, var(--accent) 8%, var(--chip));border-color:color-mix(in oklab, var(--accent) 16%, var(--border));transform:translateY(-1px);box-shadow:0 2px 8px rgba(2,6,23,.08)}
+.skill-title{font-weight:700;font-size:14px;line-height:1.4}
+.skill-desc{color:var(--muted);font-size:12.5px;margin-top:6px;line-height:1.45}
 
 /* Editable markers — search for "EDIT:" to quickly find fields */
 
