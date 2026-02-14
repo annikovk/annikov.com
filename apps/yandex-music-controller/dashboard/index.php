@@ -236,16 +236,32 @@ try {
                 <div class="stat-value"><?= number_format($stats['unique_action_types']) ?></div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Last 24 Hours</div>
+                <div class="stat-label">Unique Visitors</div>
+                <div class="stat-value"><?= number_format($stats['unique_visitors']) ?></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Actions (24h)</div>
                 <div class="stat-value"><?= number_format($stats['actions_24h']) ?></div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Last 7 Days</div>
+                <div class="stat-label">Visitors (24h)</div>
+                <div class="stat-value"><?= number_format($stats['unique_visitors_24h']) ?></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Actions (7d)</div>
                 <div class="stat-value"><?= number_format($stats['actions_7d']) ?></div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Last 30 Days</div>
+                <div class="stat-label">Visitors (7d)</div>
+                <div class="stat-value"><?= number_format($stats['unique_visitors_7d']) ?></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Actions (30d)</div>
                 <div class="stat-value"><?= number_format($stats['actions_30d']) ?></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Visitors (30d)</div>
+                <div class="stat-value"><?= number_format($stats['unique_visitors_30d']) ?></div>
             </div>
         </div>
         <?php endif; ?>
@@ -258,6 +274,7 @@ try {
                     <tr>
                         <th>Action Name</th>
                         <th style="text-align: right;">Total Count</th>
+                        <th style="text-align: right;">Unique Visitors</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -265,6 +282,7 @@ try {
                     <tr>
                         <td><?= htmlspecialchars($action['action_name']) ?></td>
                         <td style="text-align: right;"><?= number_format($action['total_count']) ?></td>
+                        <td style="text-align: right;"><?= number_format($action['unique_visitors']) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>

@@ -115,6 +115,10 @@ class ActionTracker
             $stats = [
                 'total_actions' => 0,
                 'unique_action_types' => 0,
+                'unique_visitors' => 0,
+                'unique_visitors_24h' => 0,
+                'unique_visitors_7d' => 0,
+                'unique_visitors_30d' => 0,
                 'actions_24h' => 0,
                 'actions_7d' => 0,
                 'actions_30d' => 0,
@@ -127,6 +131,36 @@ class ActionTracker
             // Unique action types
             $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM action_stats');
             $stats['unique_action_types'] = $result !== null ? (int)$result['count'] : 0;
+
+            // Unique visitors by IP (all-time)
+            $result = $this->db->fetchOne(
+                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL'
+            );
+            $stats['unique_visitors'] = $result !== null ? (int)$result['count'] : 0;
+
+            // Unique visitors in last 24 hours
+            $cutoff24h = time() - (24 * 3600);
+            $result = $this->db->fetchOne(
+                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?',
+                [$cutoff24h]
+            );
+            $stats['unique_visitors_24h'] = $result !== null ? (int)$result['count'] : 0;
+
+            // Unique visitors in last 7 days
+            $cutoff7d = time() - (7 * 24 * 3600);
+            $result = $this->db->fetchOne(
+                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?',
+                [$cutoff7d]
+            );
+            $stats['unique_visitors_7d'] = $result !== null ? (int)$result['count'] : 0;
+
+            // Unique visitors in last 30 days
+            $cutoff30d = time() - (30 * 24 * 3600);
+            $result = $this->db->fetchOne(
+                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?',
+                [$cutoff30d]
+            );
+            $stats['unique_visitors_30d'] = $result !== null ? (int)$result['count'] : 0;
 
             // Actions in last 24 hours
             $cutoff24h = time() - (24 * 3600);
@@ -184,15 +218,20 @@ class ActionTracker
      * Get top actions by count
      *
      * @param int $limit Maximum number of actions to return
-     * @return array Top actions
+     * @return array Top actions with unique visitor counts
      */
     public function getTopActions(int $limit = 10): array
     {
         try {
             return $this->db->fetchAll(
-                'SELECT action_name, total_count
-                 FROM action_stats
-                 ORDER BY total_count DESC
+                'SELECT
+                    s.action_name,
+                    s.total_count,
+                    COUNT(DISTINCT a.ip_address) as unique_visitors
+                 FROM action_stats s
+                 LEFT JOIN actions a ON s.action_name = a.action_name AND a.ip_address IS NOT NULL
+                 GROUP BY s.action_name, s.total_count
+                 ORDER BY s.total_count DESC
                  LIMIT ?',
                 [$limit]
             );
