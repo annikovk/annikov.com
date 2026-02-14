@@ -32,9 +32,10 @@ class RateLimiter
      * Check if IP address is within rate limit
      *
      * @param string $ipAddress IP address to check
+     * @param string $endpointType Endpoint type (default: 'action')
      * @return bool True if within limit, false if exceeded
      */
-    public function check(string $ipAddress): bool
+    public function check(string $ipAddress, string $endpointType = 'action'): bool
     {
         $currentTime = time();
         $windowStart = $currentTime - $this->windowSeconds;
@@ -42,8 +43,8 @@ class RateLimiter
         try {
             // Get current rate limit record
             $record = $this->db->fetchOne(
-                'SELECT request_count, window_start FROM rate_limits WHERE ip_address = ?',
-                [$ipAddress]
+                'SELECT request_count, window_start FROM rate_limits WHERE ip_address = ? AND endpoint_type = ?',
+                [$ipAddress, $endpointType]
             );
 
             if ($record === null) {
@@ -55,8 +56,8 @@ class RateLimiter
             if ($record['window_start'] < $windowStart) {
                 // Window expired, reset counter
                 $this->db->execute(
-                    'UPDATE rate_limits SET request_count = 0, window_start = ? WHERE ip_address = ?',
-                    [$currentTime, $ipAddress]
+                    'UPDATE rate_limits SET request_count = 0, window_start = ? WHERE ip_address = ? AND endpoint_type = ?',
+                    [$currentTime, $ipAddress, $endpointType]
                 );
                 return true;
             }
@@ -79,9 +80,10 @@ class RateLimiter
      * Increment request counter for IP address
      *
      * @param string $ipAddress IP address to increment
+     * @param string $endpointType Endpoint type (default: 'action')
      * @return void
      */
-    public function increment(string $ipAddress): void
+    public function increment(string $ipAddress, string $endpointType = 'action'): void
     {
         $currentTime = time();
 
@@ -90,17 +92,17 @@ class RateLimiter
             $updated = $this->db->execute(
                 'UPDATE rate_limits
                  SET request_count = request_count + 1
-                 WHERE ip_address = ? AND window_start >= ?',
-                [$ipAddress, $currentTime - $this->windowSeconds]
+                 WHERE ip_address = ? AND endpoint_type = ? AND window_start >= ?',
+                [$ipAddress, $endpointType, $currentTime - $this->windowSeconds]
             );
 
             // If no rows updated, insert new record
             if ($updated === false || $this->db->query('SELECT ROW_COUNT()')->fetchColumn() === 0) {
                 $this->db->execute(
-                    'INSERT INTO rate_limits (ip_address, request_count, window_start)
-                     VALUES (?, 1, ?)
+                    'INSERT INTO rate_limits (ip_address, endpoint_type, request_count, window_start)
+                     VALUES (?, ?, 1, ?)
                      ON DUPLICATE KEY UPDATE request_count = 1, window_start = ?',
-                    [$ipAddress, $currentTime, $currentTime]
+                    [$ipAddress, $endpointType, $currentTime, $currentTime]
                 );
             }
 
