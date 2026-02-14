@@ -168,9 +168,6 @@ class Database
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
 
-            // Migrate existing actions table if needed
-            $this->migrateActionsTable();
-
             // Create rate_limits table
             $this->execute("
                 CREATE TABLE IF NOT EXISTS rate_limits (
@@ -182,9 +179,6 @@ class Database
                     INDEX idx_window_start (window_start)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
-
-            // Migrate existing rate_limits table if needed
-            $this->migrateRateLimitsTable();
 
             // Create action_stats table
             $this->execute("
@@ -243,73 +237,6 @@ class Database
             ");
         } catch (PDOException $e) {
             throw $e;
-        }
-    }
-
-    /**
-     * Migrate existing actions table to add installation_id column and remove unused columns
-     *
-     * @return void
-     */
-    private function migrateActionsTable(): void
-    {
-        try {
-            // First, remove unused columns if they exist
-            $refererColumns = $this->fetchAll("SHOW COLUMNS FROM actions LIKE 'referer'");
-            if (!empty($refererColumns)) {
-                $this->execute("ALTER TABLE actions DROP COLUMN referer");
-            }
-
-            $userAgentColumns = $this->fetchAll("SHOW COLUMNS FROM actions LIKE 'user_agent'");
-            if (!empty($userAgentColumns)) {
-                $this->execute("ALTER TABLE actions DROP COLUMN user_agent");
-            }
-
-            // Then, add installation_id column if it doesn't exist
-            $columns = $this->fetchAll("SHOW COLUMNS FROM actions LIKE 'installation_id'");
-            if (empty($columns)) {
-                // Add installation_id column after ip_address
-                $this->execute("
-                    ALTER TABLE actions
-                    ADD COLUMN installation_id VARCHAR(255) DEFAULT '0' AFTER ip_address,
-                    ADD INDEX idx_installation_id (installation_id)
-                ");
-            }
-        } catch (PDOException $e) {
-            // If migration fails, table might already be in new format
-            // or doesn't exist yet (will be created by CREATE TABLE IF NOT EXISTS)
-        }
-    }
-
-    /**
-     * Migrate existing rate_limits table to support endpoint types
-     *
-     * @return void
-     */
-    private function migrateRateLimitsTable(): void
-    {
-        try {
-            // Check if endpoint_type column exists
-            $columns = $this->fetchAll("SHOW COLUMNS FROM rate_limits LIKE 'endpoint_type'");
-
-            if (empty($columns)) {
-                // Old schema detected - need to migrate
-                // Add endpoint_type column
-                $this->execute("
-                    ALTER TABLE rate_limits
-                    ADD COLUMN endpoint_type VARCHAR(50) DEFAULT 'action' AFTER ip_address
-                ");
-
-                // Drop old primary key and create new composite one
-                $this->execute("
-                    ALTER TABLE rate_limits
-                    DROP PRIMARY KEY,
-                    ADD PRIMARY KEY (ip_address, endpoint_type)
-                ");
-            }
-        } catch (PDOException $e) {
-            // If migration fails, table might already be in new format
-            // or doesn't exist yet (will be created by CREATE TABLE IF NOT EXISTS)
         }
     }
 }
