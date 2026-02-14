@@ -72,8 +72,9 @@ function sendResponse(
 }
 
 try {
-    // Get action ID from query parameter
+    // Get action ID and installation_id from query parameters
     $actionId = $_GET['id'] ?? null;
+    $installationId = $_GET['installation_id'] ?? '0'; // Default to '0' for backward compatibility
 
     if ($actionId === null || $actionId === '') {
         sendResponse(false, null, null, 'Missing action ID', 400);
@@ -116,7 +117,7 @@ try {
     );
 
     try {
-        $totalCount = $actionTracker->track($actionId);
+        $totalCount = $actionTracker->track($actionId, $installationId);
         sendResponse(true, $actionId, $totalCount, null, 200);
     } catch (InvalidArgumentException $e) {
         sendResponse(false, null, null, 'Invalid action ID format', 400);

@@ -28,11 +28,12 @@ class ActionTracker
      * Track an action
      *
      * @param string $actionName Name of the action to track
+     * @param string $installationId Installation ID (defaults to '0' for backward compatibility)
      * @return int Total count for this action
      * @throws InvalidArgumentException If action name is invalid
      * @throws RuntimeException If tracking fails
      */
-    public function track(string $actionName): int
+    public function track(string $actionName, string $installationId = '0'): int
     {
         // Validate action name
         if (!$this->isValidActionName($actionName)) {
@@ -47,14 +48,13 @@ class ActionTracker
 
             // Insert action record
             $this->db->execute(
-                'INSERT INTO actions (action_name, timestamp, ip_address, user_agent, referer)
-                 VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO actions (action_name, timestamp, ip_address, installation_id)
+                 VALUES (?, ?, ?, ?)',
                 [
                     $actionName,
                     time(),
                     $metadata['ip'],
-                    $metadata['user_agent'],
-                    $metadata['referer'],
+                    $installationId,
                 ]
             );
 
@@ -283,14 +283,12 @@ class ActionTracker
     /**
      * Extract request metadata
      *
-     * @return array Metadata (ip, user_agent, referer)
+     * @return array Metadata (ip)
      */
     private function extractMetadata(): array
     {
         return [
             'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-            'referer' => $_SERVER['HTTP_REFERER'] ?? null,
         ];
     }
 }
