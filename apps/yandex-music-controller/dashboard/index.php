@@ -10,6 +10,7 @@ $config = require dirname(__DIR__) . '/config.php';
 require_once dirname(__DIR__) . '/lib/Database.php';
 require_once dirname(__DIR__) . '/lib/ActionTracker.php';
 require_once dirname(__DIR__) . '/lib/InstallationTracker.php';
+require_once dirname(__DIR__) . '/lib/ErrorTracker.php';
 
 try {
     $db = Database::getInstance($config['database']);
@@ -27,6 +28,11 @@ try {
     $osBreakdown = $installationTracker->getOSBreakdown();
     $recentInstallations = $installationTracker->getRecentInstallations(50);
 
+    // Get error statistics
+    $errorTracker = new ErrorTracker($db);
+    $errorStats = $errorTracker->getStats();
+    $recentErrors = $errorTracker->getRecentErrors(50);
+
 } catch (Exception $e) {
     $stats = [];
     $topActions = [];
@@ -35,6 +41,8 @@ try {
     $versionBreakdown = [];
     $osBreakdown = [];
     $recentInstallations = [];
+    $errorStats = [];
+    $recentErrors = [];
 }
 ?>
 <!DOCTYPE html>
@@ -357,6 +365,178 @@ try {
             outline: 2px solid var(--accent);
             outline-offset: -2px;
         }
+
+        /* Error Grouping Styles */
+        /* Primary row with grouped errors */
+        .error-group-row.has-grouped {
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .error-group-row.has-grouped:hover {
+            background: var(--hover-bg);
+        }
+
+        /* Expand indicator (▶ becomes ▼) */
+        .expand-indicator {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 10px;
+            color: var(--accent);
+            transition: transform 0.2s ease;
+        }
+
+        .error-group-row.expanded .expand-indicator {
+            transform: rotate(90deg);
+        }
+
+        /* Badge showing +N count */
+        .grouped-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 3px 10px;
+            background: var(--accent-subtle);
+            color: var(--accent);
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Show error type variety */
+        .error-type-pills {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .error-type-pill {
+            padding: 2px 6px;
+            background: var(--hover-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        /* Grouped error rows (children) */
+        .grouped-error-row {
+            display: none;  /* Hidden by default */
+            background: var(--hover-bg);
+            border-left: 3px solid var(--accent-subtle);
+        }
+
+        .grouped-error-row td {
+            padding: 10px 16px;
+            opacity: 0.85;
+        }
+
+        .grouped-error-row .timestamp {
+            padding-left: 32px;  /* Indent */
+        }
+
+        .indent-arrow {
+            display: inline-block;
+            margin-right: 6px;
+            color: var(--text-secondary);
+        }
+
+        /* Stack trace modal */
+        .stack-trace-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .stack-trace-modal.active {
+            display: flex;
+        }
+
+        .stack-trace-content {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow: auto;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+        }
+
+        .stack-trace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .stack-trace-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--text-primary);
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            font-size: 32px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+
+        .close-btn:hover {
+            color: var(--accent);
+        }
+
+        .stack-trace-body {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            background: var(--hover-bg);
+            padding: 16px;
+            border-radius: 8px;
+            color: var(--text-primary);
+        }
+
+        .stack-trace-link {
+            color: var(--accent);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .stack-trace-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .error-type-pills {
+                font-size: 9px;
+            }
+
+            .grouped-badge {
+                font-size: 10px;
+                padding: 2px 8px;
+            }
+
+            .stack-trace-content {
+                padding: 20px;
+                max-width: 95%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -380,6 +560,15 @@ try {
                     aria-controls="tab-installations"
                     id="tab-btn-installations">
                     Installations
+                </button>
+                <button
+                    class="tab-button"
+                    data-tab="errors"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="tab-errors"
+                    id="tab-btn-errors">
+                    Errors
                 </button>
             </div>
 
@@ -563,6 +752,175 @@ try {
                 <?php else: ?>
                 <div class="section">
                     <div class="no-data">No installation reports yet</div>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Errors Tab -->
+            <div id="tab-errors" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-errors">
+                <?php if (!empty($errorStats)): ?>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Errors</div>
+                        <div class="stat-value"><?= number_format($errorStats['total_errors']) ?></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Unique Users Affected</div>
+                        <div class="stat-value"><?= number_format($errorStats['unique_users_affected']) ?></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Errors (24h)</div>
+                        <div class="stat-value"><?= number_format($errorStats['errors_24h']) ?></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Users Affected (24h)</div>
+                        <div class="stat-value"><?= number_format($errorStats['users_affected_24h']) ?></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Users Affected (7d)</div>
+                        <div class="stat-value"><?= number_format($errorStats['users_affected_7d']) ?></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Users Affected (30d)</div>
+                        <div class="stat-value"><?= number_format($errorStats['users_affected_30d']) ?></div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($recentErrors)): ?>
+                <div class="section">
+                    <h2>Recent Errors</h2>
+                    <table id="errorsTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-column="0" data-type="date">Timestamp</th>
+                                <th class="sortable" data-column="1" data-type="string">Error Message</th>
+                                <th class="sortable" data-column="2" data-type="string">Installation ID</th>
+                                <th class="sortable" data-column="3" data-type="string">Platform</th>
+                                <th class="sortable" data-column="4" data-type="string">Version</th>
+                                <th class="sortable" data-column="5" data-type="string">Stack Trace</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $groupIndex = 0;
+                            foreach ($recentErrors as $group):
+                                $primary = $group['primary_error'];
+                                $hasGrouped = $group['count'] > 1;
+                                $groupId = 'error-group-' . $groupIndex;
+                            ?>
+
+                            <!-- Primary row -->
+                            <tr class="error-group-row <?= $hasGrouped ? 'has-grouped' : '' ?>"
+                                data-group-id="<?= $groupId ?>"
+                                data-has-grouped="<?= $hasGrouped ? '1' : '0' ?>">
+
+                                <td class="timestamp" data-value="<?= date('Y-m-d H:i:s', $primary['timestamp']) ?>">
+                                    <?= date('Y-m-d H:i:s', $primary['timestamp']) ?>
+                                    <?php if ($hasGrouped): ?>
+                                        <span class="expand-indicator">▶</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td style="font-family: monospace; font-size: 12px; max-width: 400px; word-wrap: break-word;">
+                                    <div title="<?= htmlspecialchars($primary['error_message']) ?>">
+                                        <?php
+                                        $message = htmlspecialchars($primary['error_message']);
+                                        echo strlen($message) > 100 ? substr($message, 0, 100) . '...' : $message;
+                                        ?>
+                                        <?php if ($hasGrouped): ?>
+                                            <span class="grouped-badge" title="<?= $group['count'] ?> errors in <?= $group['latest_timestamp'] - $group['earliest_timestamp'] ?>s">
+                                                +<?= $group['count'] - 1 ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if ($hasGrouped && count($group['error_types']) > 1): ?>
+                                        <div class="error-type-pills">
+                                            <?php foreach (array_slice($group['error_types'], 0, 3) as $type): ?>
+                                                <span class="error-type-pill"><?= htmlspecialchars($type) ?></span>
+                                            <?php endforeach; ?>
+                                            <?php if (count($group['error_types']) > 3): ?>
+                                                <span class="error-type-pill">+<?= count($group['error_types']) - 3 ?> more</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td style="font-family: monospace; font-size: 12px;">
+                                    <?php
+                                    if (empty($primary['installation_id'])) {
+                                        echo '<span style="color: var(--text-secondary); font-style: italic;">Not initialized</span>';
+                                    } else {
+                                        $truncated = substr($primary['installation_id'], 0, 16);
+                                        echo htmlspecialchars($truncated) . '...';
+                                    }
+                                    ?>
+                                </td>
+
+                                <td><?= htmlspecialchars($primary['platform'] ?? 'N/A') ?></td>
+                                <td><?= htmlspecialchars($primary['plugin_version'] ?? 'N/A') ?></td>
+
+                                <td>
+                                    <?php if (!empty($primary['stack_trace'])): ?>
+                                        <a class="stack-trace-link" data-stack-trace="<?= htmlspecialchars($primary['stack_trace'], ENT_QUOTES) ?>">View</a>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-secondary);">No</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+
+                            <!-- Grouped errors (hidden by default) -->
+                            <?php if ($hasGrouped): ?>
+                                <?php foreach ($group['grouped_errors'] as $error): ?>
+                                <tr class="grouped-error-row" data-group-id="<?= $groupId ?>">
+                                    <td class="timestamp" data-value="<?= date('Y-m-d H:i:s', $error['timestamp']) ?>">
+                                        <span class="indent-arrow">↳</span>
+                                        <?= date('Y-m-d H:i:s', $error['timestamp']) ?>
+                                    </td>
+
+                                    <td style="font-family: monospace; font-size: 12px; max-width: 400px; word-wrap: break-word;" title="<?= htmlspecialchars($error['error_message']) ?>">
+                                        <?php
+                                        $message = htmlspecialchars($error['error_message']);
+                                        echo strlen($message) > 100 ? substr($message, 0, 100) . '...' : $message;
+                                        ?>
+                                    </td>
+
+                                    <td style="font-family: monospace; font-size: 12px;">
+                                        <?php
+                                        if (empty($error['installation_id'])) {
+                                            echo '<span style="color: var(--text-secondary); font-style: italic;">Not initialized</span>';
+                                        } else {
+                                            $truncated = substr($error['installation_id'], 0, 16);
+                                            echo htmlspecialchars($truncated) . '...';
+                                        }
+                                        ?>
+                                    </td>
+
+                                    <td><?= htmlspecialchars($error['platform'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($error['plugin_version'] ?? 'N/A') ?></td>
+
+                                    <td>
+                                        <?php if (!empty($error['stack_trace'])): ?>
+                                            <a class="stack-trace-link" data-stack-trace="<?= htmlspecialchars($error['stack_trace'], ENT_QUOTES) ?>">View</a>
+                                        <?php else: ?>
+                                            <span style="color: var(--text-secondary);">No</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+
+                            <?php
+                            $groupIndex++;
+                            endforeach;
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <div class="section">
+                    <div class="no-data">No errors reported yet</div>
                 </div>
                 <?php endif; ?>
             </div>
@@ -804,7 +1162,90 @@ try {
                 });
             }
             <?php endif; ?>
+
+            // Initialize error grouping
+            initErrorGrouping();
+
+            // Setup stack trace links
+            document.querySelectorAll('.stack-trace-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const trace = this.dataset.stackTrace;
+                    if (trace) showStackTrace(trace);
+                });
+            });
         });
+
+        // Error grouping expand/collapse
+        function initErrorGrouping() {
+            const groupRows = document.querySelectorAll('.error-group-row.has-grouped');
+
+            groupRows.forEach(row => {
+                row.addEventListener('click', function(e) {
+                    // Don't expand if clicking on stack trace link
+                    if (e.target.classList.contains('stack-trace-link')) {
+                        return;
+                    }
+
+                    const groupId = this.dataset.groupId;
+                    const childRows = document.querySelectorAll(`.grouped-error-row[data-group-id="${groupId}"]`);
+                    const isExpanded = this.classList.contains('expanded');
+
+                    if (isExpanded) {
+                        // Collapse
+                        this.classList.remove('expanded');
+                        childRows.forEach(r => r.style.display = 'none');
+                    } else {
+                        // Expand
+                        this.classList.add('expanded');
+                        childRows.forEach(r => r.style.display = 'table-row');
+                    }
+                });
+            });
+        }
+
+        // Stack trace modal
+        function showStackTrace(stackTrace) {
+            let modal = document.getElementById('stackTraceModal');
+
+            if (!modal) {
+                // Create modal on first use
+                modal = document.createElement('div');
+                modal.id = 'stackTraceModal';
+                modal.className = 'stack-trace-modal';
+                modal.innerHTML = `
+                    <div class="stack-trace-content">
+                        <div class="stack-trace-header">
+                            <h3>Stack Trace</h3>
+                            <button class="close-btn" onclick="closeStackTrace()">×</button>
+                        </div>
+                        <div class="stack-trace-body" id="stackTraceBody"></div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                // Close on backdrop click
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeStackTrace();
+                });
+
+                // Close on Escape key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && modal.classList.contains('active')) {
+                        closeStackTrace();
+                    }
+                });
+            }
+
+            document.getElementById('stackTraceBody').textContent = stackTrace;
+            modal.classList.add('active');
+        }
+
+        function closeStackTrace() {
+            const modal = document.getElementById('stackTraceModal');
+            if (modal) modal.classList.remove('active');
+        }
     </script>
 </body>
 </html>

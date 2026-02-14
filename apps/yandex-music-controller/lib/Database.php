@@ -225,6 +225,22 @@ class Database
                     INDEX idx_installation_id (installation_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
+
+            // Create errors table
+            $this->execute("
+                CREATE TABLE IF NOT EXISTS errors (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    timestamp INT UNSIGNED NOT NULL,
+                    ip_address VARCHAR(45),
+
+                    installation_id VARCHAR(255) DEFAULT '',
+                    error_message TEXT NOT NULL,
+                    stack_trace TEXT,
+
+                    INDEX idx_timestamp (timestamp),
+                    INDEX idx_installation_id (installation_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
         } catch (PDOException $e) {
             throw $e;
         }
