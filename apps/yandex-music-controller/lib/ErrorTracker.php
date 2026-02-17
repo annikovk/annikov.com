@@ -39,12 +39,13 @@ class ErrorTracker
             $this->db->execute(
                 'INSERT INTO errors (
                     timestamp, ip_address,
-                    installation_id, error_message, stack_trace
-                ) VALUES (?, ?, ?, ?, ?)',
+                    installation_id, platform, error_message, stack_trace
+                ) VALUES (?, ?, ?, ?, ?, ?)',
                 [
                     time(),
                     $metadata['ip'],
                     $normalized['installation_id'],
+                    $normalized['platform'],
                     $normalized['error_message'],
                     $normalized['stack_trace'],
                 ]
@@ -150,11 +151,13 @@ class ErrorTracker
             // Fetch more errors than limit to have enough data for grouping
             $fetchLimit = $limit * 4;
 
-            // Get recent errors with latest installation data joined
+            // Get recent errors with latest installation data joined.
+            // platform comes directly from errors table (e.*).
+            // Join installations on (installation_id, platform) when error has platform,
+            // otherwise fall back to installation_id only.
             $errors = $this->db->fetchAll(
                 'SELECT
                     e.*,
-                    i.platform,
                     i.plugin_version,
                     i.os_release
                 FROM errors e
@@ -162,9 +165,14 @@ class ErrorTracker
                     SELECT installation_id, platform, plugin_version, os_release
                     FROM installations
                     WHERE installation_id != ""
-                    GROUP BY installation_id
+                    GROUP BY installation_id, platform
                     HAVING MAX(timestamp)
-                ) i ON e.installation_id = i.installation_id AND e.installation_id != ""
+                ) i ON e.installation_id = i.installation_id
+                    AND e.installation_id != ""
+                    AND (
+                        (e.platform IS NOT NULL AND e.platform != "" AND i.platform = e.platform)
+                        OR (e.platform IS NULL OR e.platform = "")
+                    )
                 ORDER BY e.id DESC
                 LIMIT ?',
                 [$fetchLimit]
@@ -304,6 +312,11 @@ class ErrorTracker
         if (isset($data['stack_trace']) && !is_string($data['stack_trace'])) {
             throw new InvalidArgumentException('stack_trace must be a string');
         }
+
+        // platform is optional
+        if (isset($data['platform']) && !is_string($data['platform'])) {
+            throw new InvalidArgumentException('platform must be a string');
+        }
     }
 
     /**
@@ -316,6 +329,7 @@ class ErrorTracker
     {
         return [
             'installation_id' => isset($data['installation_id']) ? substr($data['installation_id'], 0, 255) : '',
+            'platform' => isset($data['platform']) ? substr(trim($data['platform']), 0, 50) : null,
             'error_message' => substr(trim($data['error_message']), 0, 2000),
             'stack_trace' => isset($data['stack_trace']) ? substr($data['stack_trace'], 0, 10000) : null,
         ];

@@ -180,15 +180,6 @@ class Database
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
 
-            // Create action_stats table
-            $this->execute("
-                CREATE TABLE IF NOT EXISTS action_stats (
-                    action_name VARCHAR(255) PRIMARY KEY,
-                    total_count INT UNSIGNED DEFAULT 0,
-                    last_updated INT UNSIGNED NOT NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            ");
-
             // Create installations table
             $this->execute("
                 CREATE TABLE IF NOT EXISTS installations (
@@ -228,6 +219,7 @@ class Database
                     ip_address VARCHAR(45),
 
                     installation_id VARCHAR(255) DEFAULT '',
+                    platform VARCHAR(50) DEFAULT NULL,
                     error_message TEXT NOT NULL,
                     stack_trace TEXT,
 
@@ -235,6 +227,15 @@ class Database
                     INDEX idx_installation_id (installation_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ");
+
+            // Add platform column to existing errors tables (migration)
+            try {
+                $this->execute("
+                    ALTER TABLE errors ADD COLUMN IF NOT EXISTS platform VARCHAR(50) DEFAULT NULL
+                ");
+            } catch (PDOException $e) {
+                // Column may already exist on older MySQL without IF NOT EXISTS support
+            }
         } catch (PDOException $e) {
             throw $e;
         }

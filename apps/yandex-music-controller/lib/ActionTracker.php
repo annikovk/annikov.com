@@ -44,8 +44,6 @@ class ActionTracker
         $metadata = $this->extractMetadata();
 
         try {
-            $this->db->beginTransaction();
-
             // Insert action record
             $this->db->execute(
                 'INSERT INTO actions (action_name, timestamp, ip_address, installation_id)
@@ -58,25 +56,12 @@ class ActionTracker
                 ]
             );
 
-            // Update action stats
-            $this->db->execute(
-                'INSERT INTO action_stats (action_name, total_count, last_updated)
-                 VALUES (?, 1, ?)
-                 ON DUPLICATE KEY UPDATE
-                 total_count = total_count + 1,
-                 last_updated = ?',
-                [$actionName, time(), time()]
-            );
-
             // Get updated count
             $count = $this->getCount($actionName);
-
-            $this->db->commit();
 
             return $count;
 
         } catch (PDOException $e) {
-            $this->db->rollback();
             throw new RuntimeException('Failed to track action');
         }
     }
@@ -91,10 +76,10 @@ class ActionTracker
     {
         try {
             $result = $this->db->fetchOne(
-                'SELECT total_count FROM action_stats WHERE action_name = ?',
+                'SELECT COUNT(*) as count FROM actions WHERE action_name = ?',
                 [$actionName]
             );
-            return $result !== null ? (int)$result['total_count'] : 0;
+            return $result !== null ? (int)$result['count'] : 0;
         } catch (PDOException $e) {
             return 0;
         }
@@ -125,11 +110,11 @@ class ActionTracker
             ];
 
             // Total actions
-            $result = $this->db->fetchOne('SELECT SUM(total_count) as total FROM action_stats');
-            $stats['total_actions'] = $result !== null ? (int)$result['total'] : 0;
+            $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM actions');
+            $stats['total_actions'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique action types
-            $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM action_stats');
+            $result = $this->db->fetchOne('SELECT COUNT(DISTINCT action_name) as count FROM actions');
             $stats['unique_action_types'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique visitors by IP (all-time)
@@ -225,13 +210,12 @@ class ActionTracker
         try {
             return $this->db->fetchAll(
                 'SELECT
-                    s.action_name,
-                    s.total_count,
-                    COUNT(DISTINCT a.ip_address) as unique_visitors
-                 FROM action_stats s
-                 LEFT JOIN actions a ON s.action_name = a.action_name AND a.ip_address IS NOT NULL
-                 GROUP BY s.action_name, s.total_count
-                 ORDER BY s.total_count DESC
+                    action_name,
+                    COUNT(*) as total_count,
+                    COUNT(DISTINCT ip_address) as unique_visitors
+                 FROM actions
+                 GROUP BY action_name
+                 ORDER BY total_count DESC
                  LIMIT ?',
                 [$limit]
             );

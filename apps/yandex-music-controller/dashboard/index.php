@@ -512,14 +512,14 @@ try {
             color: var(--text-primary);
         }
 
-        .stack-trace-link {
-            color: var(--accent);
+        /* Error message clickable */
+        .error-message-truncated {
             cursor: pointer;
-            text-decoration: none;
+            transition: color 0.2s ease;
         }
 
-        .stack-trace-link:hover {
-            text-decoration: underline;
+        .error-message-truncated:hover {
+            color: var(--accent);
         }
 
         @media (max-width: 768px) {
@@ -797,8 +797,8 @@ try {
                                 <th class="sortable" data-column="1" data-type="string">Error Message</th>
                                 <th class="sortable" data-column="2" data-type="string">Installation ID</th>
                                 <th class="sortable" data-column="3" data-type="string">Platform</th>
-                                <th class="sortable" data-column="4" data-type="string">Version</th>
-                                <th class="sortable" data-column="5" data-type="string">Stack Trace</th>
+                                <th class="sortable" data-column="4" data-type="string">OS Release</th>
+                                <th class="sortable" data-column="5" data-type="string">Version</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -823,11 +823,18 @@ try {
                                 </td>
 
                                 <td style="font-family: monospace; font-size: 12px; max-width: 400px; word-wrap: break-word;">
-                                    <div title="<?= htmlspecialchars($primary['error_message']) ?>">
+                                    <div>
                                         <?php
-                                        $message = htmlspecialchars($primary['error_message']);
-                                        echo strlen($message) > 100 ? substr($message, 0, 100) . '...' : $message;
+                                        $fullMessage = htmlspecialchars($primary['error_message']);
+                                        $isTruncated = strlen($fullMessage) > 100;
+                                        $stackTrace = !empty($primary['stack_trace']) ? htmlspecialchars($primary['stack_trace'], ENT_QUOTES) : '';
                                         ?>
+                                        <span class="<?= $isTruncated ? 'error-message-truncated' : '' ?>"
+                                              <?= $isTruncated ? 'data-full-message="' . $fullMessage . '"' : '' ?>
+                                              <?= $isTruncated && $stackTrace ? 'data-stack-trace="' . $stackTrace . '"' : '' ?>
+                                              <?= $isTruncated ? 'title="Click to view full error message"' : '' ?>>
+                                            <?= $isTruncated ? substr($fullMessage, 0, 100) . '...' : $fullMessage ?>
+                                        </span>
                                         <?php if ($hasGrouped): ?>
                                             <span class="grouped-badge" title="<?= $group['count'] ?> errors in <?= $group['latest_timestamp'] - $group['earliest_timestamp'] ?>s">
                                                 +<?= $group['count'] - 1 ?>
@@ -847,27 +854,19 @@ try {
                                     <?php endif; ?>
                                 </td>
 
-                                <td style="font-family: monospace; font-size: 12px;">
+                                <td style="font-family: monospace; font-size: 11px;">
                                     <?php
                                     if (empty($primary['installation_id'])) {
                                         echo '<span style="color: var(--text-secondary); font-style: italic;">Not initialized</span>';
                                     } else {
-                                        $truncated = substr($primary['installation_id'], 0, 16);
-                                        echo htmlspecialchars($truncated) . '...';
+                                        echo htmlspecialchars($primary['installation_id']);
                                     }
                                     ?>
                                 </td>
 
                                 <td><?= htmlspecialchars($primary['platform'] ?? 'N/A') ?></td>
+                                <td><?= htmlspecialchars($primary['os_release'] ?? 'N/A') ?></td>
                                 <td><?= htmlspecialchars($primary['plugin_version'] ?? 'N/A') ?></td>
-
-                                <td>
-                                    <?php if (!empty($primary['stack_trace'])): ?>
-                                        <a class="stack-trace-link" data-stack-trace="<?= htmlspecialchars($primary['stack_trace'], ENT_QUOTES) ?>">View</a>
-                                    <?php else: ?>
-                                        <span style="color: var(--text-secondary);">No</span>
-                                    <?php endif; ?>
-                                </td>
                             </tr>
 
                             <!-- Grouped errors (hidden by default) -->
@@ -879,34 +878,33 @@ try {
                                         <?= date('Y-m-d H:i:s', $error['timestamp']) ?>
                                     </td>
 
-                                    <td style="font-family: monospace; font-size: 12px; max-width: 400px; word-wrap: break-word;" title="<?= htmlspecialchars($error['error_message']) ?>">
+                                    <td style="font-family: monospace; font-size: 12px; max-width: 400px; word-wrap: break-word;">
                                         <?php
-                                        $message = htmlspecialchars($error['error_message']);
-                                        echo strlen($message) > 100 ? substr($message, 0, 100) . '...' : $message;
+                                        $fullMessage = htmlspecialchars($error['error_message']);
+                                        $isTruncated = strlen($fullMessage) > 100;
+                                        $stackTrace = !empty($error['stack_trace']) ? htmlspecialchars($error['stack_trace'], ENT_QUOTES) : '';
                                         ?>
+                                        <span class="<?= $isTruncated ? 'error-message-truncated' : '' ?>"
+                                              <?= $isTruncated ? 'data-full-message="' . $fullMessage . '"' : '' ?>
+                                              <?= $isTruncated && $stackTrace ? 'data-stack-trace="' . $stackTrace . '"' : '' ?>
+                                              <?= $isTruncated ? 'title="Click to view full error message"' : '' ?>>
+                                            <?= $isTruncated ? substr($fullMessage, 0, 100) . '...' : $fullMessage ?>
+                                        </span>
                                     </td>
 
-                                    <td style="font-family: monospace; font-size: 12px;">
+                                    <td style="font-family: monospace; font-size: 11px;">
                                         <?php
                                         if (empty($error['installation_id'])) {
                                             echo '<span style="color: var(--text-secondary); font-style: italic;">Not initialized</span>';
                                         } else {
-                                            $truncated = substr($error['installation_id'], 0, 16);
-                                            echo htmlspecialchars($truncated) . '...';
+                                            echo htmlspecialchars($error['installation_id']);
                                         }
                                         ?>
                                     </td>
 
                                     <td><?= htmlspecialchars($error['platform'] ?? 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($error['os_release'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($error['plugin_version'] ?? 'N/A') ?></td>
-
-                                    <td>
-                                        <?php if (!empty($error['stack_trace'])): ?>
-                                            <a class="stack-trace-link" data-stack-trace="<?= htmlspecialchars($error['stack_trace'], ENT_QUOTES) ?>">View</a>
-                                        <?php else: ?>
-                                            <span style="color: var(--text-secondary);">No</span>
-                                        <?php endif; ?>
-                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -1166,13 +1164,14 @@ try {
             // Initialize error grouping
             initErrorGrouping();
 
-            // Setup stack trace links
-            document.querySelectorAll('.stack-trace-link').forEach(link => {
-                link.addEventListener('click', function(e) {
+            // Setup error message click handlers
+            document.querySelectorAll('.error-message-truncated').forEach(span => {
+                span.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    const trace = this.dataset.stackTrace;
-                    if (trace) showStackTrace(trace);
+                    const fullMessage = this.dataset.fullMessage;
+                    const stackTrace = this.dataset.stackTrace || null;
+                    if (fullMessage) showErrorMessage(fullMessage, stackTrace);
                 });
             });
         });
@@ -1183,8 +1182,8 @@ try {
 
             groupRows.forEach(row => {
                 row.addEventListener('click', function(e) {
-                    // Don't expand if clicking on stack trace link
-                    if (e.target.classList.contains('stack-trace-link')) {
+                    // Don't expand if clicking on error message to view details
+                    if (e.target.classList.contains('error-message-truncated')) {
                         return;
                     }
 
@@ -1205,45 +1204,80 @@ try {
             });
         }
 
-        // Stack trace modal
-        function showStackTrace(stackTrace) {
-            let modal = document.getElementById('stackTraceModal');
+        // Error message modal
+        function showErrorMessage(errorMessage, stackTrace = null) {
+            let modal = document.getElementById('errorMessageModal');
 
             if (!modal) {
                 // Create modal on first use
                 modal = document.createElement('div');
-                modal.id = 'stackTraceModal';
+                modal.id = 'errorMessageModal';
                 modal.className = 'stack-trace-modal';
                 modal.innerHTML = `
                     <div class="stack-trace-content">
                         <div class="stack-trace-header">
-                            <h3>Stack Trace</h3>
-                            <button class="close-btn" onclick="closeStackTrace()">×</button>
+                            <h3>Error Details</h3>
+                            <button class="close-btn" onclick="closeErrorMessage()">×</button>
                         </div>
-                        <div class="stack-trace-body" id="stackTraceBody"></div>
+                        <div id="errorMessageContainer"></div>
                     </div>
                 `;
                 document.body.appendChild(modal);
 
                 // Close on backdrop click
                 modal.addEventListener('click', (e) => {
-                    if (e.target === modal) closeStackTrace();
+                    if (e.target === modal) closeErrorMessage();
                 });
 
                 // Close on Escape key
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && modal.classList.contains('active')) {
-                        closeStackTrace();
+                        closeErrorMessage();
                     }
                 });
             }
 
-            document.getElementById('stackTraceBody').textContent = stackTrace;
+            const container = document.getElementById('errorMessageContainer');
+            container.innerHTML = '';
+
+            // Error message section
+            const messageSection = document.createElement('div');
+            messageSection.style.marginBottom = '20px';
+
+            const messageHeader = document.createElement('h4');
+            messageHeader.style.cssText = 'margin: 0 0 10px 0; font-size: 14px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;';
+            messageHeader.textContent = 'Error Message';
+
+            const messageBody = document.createElement('div');
+            messageBody.className = 'stack-trace-body';
+            messageBody.textContent = errorMessage;
+
+            messageSection.appendChild(messageHeader);
+            messageSection.appendChild(messageBody);
+            container.appendChild(messageSection);
+
+            // Stack trace section (if available)
+            if (stackTrace) {
+                const traceSection = document.createElement('div');
+
+                const traceHeader = document.createElement('h4');
+                traceHeader.style.cssText = 'margin: 0 0 10px 0; font-size: 14px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;';
+                traceHeader.textContent = 'Stack Trace';
+
+                const traceBody = document.createElement('div');
+                traceBody.className = 'stack-trace-body';
+                traceBody.textContent = stackTrace;
+
+                traceSection.appendChild(traceHeader);
+                traceSection.appendChild(traceBody);
+                container.appendChild(traceSection);
+            }
+
             modal.classList.add('active');
         }
 
-        function closeStackTrace() {
-            const modal = document.getElementById('stackTraceModal');
+        function closeErrorMessage() {
+            const modal = document.getElementById('errorMessageModal');
             if (modal) modal.classList.remove('active');
         }
     </script>
