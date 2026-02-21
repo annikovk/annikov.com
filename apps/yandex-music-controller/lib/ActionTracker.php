@@ -88,15 +88,12 @@ class ActionTracker
     /**
      * Get statistics with optional filters
      *
-     * @param array $filters Optional filters (date_from, date_to)
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Statistics data
      */
     public function getStats(array $filters = []): array
     {
         try {
-            $dateFrom = $filters['date_from'] ?? null;
-            $dateTo = $filters['date_to'] ?? null;
-
             $stats = [
                 'total_actions' => 0,
                 'unique_action_types' => 0,
@@ -110,64 +107,83 @@ class ActionTracker
             ];
 
             // Total actions
-            $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM actions');
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
+            $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM actions WHERE 1=1' . $filterClause, $params);
             $stats['total_actions'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique action types
-            $result = $this->db->fetchOne('SELECT COUNT(DISTINCT action_name) as count FROM actions');
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
+            $result = $this->db->fetchOne('SELECT COUNT(DISTINCT action_name) as count FROM actions WHERE 1=1' . $filterClause, $params);
             $stats['unique_action_types'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique visitors by IP (all-time)
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
-                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL'
+                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL' . $filterClause,
+                $params
             );
             $stats['unique_visitors'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique visitors in last 24 hours
             $cutoff24h = time() - (24 * 3600);
+            $params = [$cutoff24h];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
-                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?',
-                [$cutoff24h]
+                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?' . $filterClause,
+                $params
             );
             $stats['unique_visitors_24h'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique visitors in last 7 days
             $cutoff7d = time() - (7 * 24 * 3600);
+            $params = [$cutoff7d];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
-                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?',
-                [$cutoff7d]
+                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?' . $filterClause,
+                $params
             );
             $stats['unique_visitors_7d'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique visitors in last 30 days
             $cutoff30d = time() - (30 * 24 * 3600);
+            $params = [$cutoff30d];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
-                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?',
-                [$cutoff30d]
+                'SELECT COUNT(DISTINCT ip_address) as count FROM actions WHERE ip_address IS NOT NULL AND timestamp >= ?' . $filterClause,
+                $params
             );
             $stats['unique_visitors_30d'] = $result !== null ? (int)$result['count'] : 0;
 
             // Actions in last 24 hours
             $cutoff24h = time() - (24 * 3600);
+            $params = [$cutoff24h];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
-                'SELECT COUNT(*) as count FROM actions WHERE timestamp >= ?',
-                [$cutoff24h]
+                'SELECT COUNT(*) as count FROM actions WHERE timestamp >= ?' . $filterClause,
+                $params
             );
             $stats['actions_24h'] = $result !== null ? (int)$result['count'] : 0;
 
             // Actions in last 7 days
             $cutoff7d = time() - (7 * 24 * 3600);
+            $params = [$cutoff7d];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
-                'SELECT COUNT(*) as count FROM actions WHERE timestamp >= ?',
-                [$cutoff7d]
+                'SELECT COUNT(*) as count FROM actions WHERE timestamp >= ?' . $filterClause,
+                $params
             );
             $stats['actions_7d'] = $result !== null ? (int)$result['count'] : 0;
 
             // Actions in last 30 days
             $cutoff30d = time() - (30 * 24 * 3600);
+            $params = [$cutoff30d];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
-                'SELECT COUNT(*) as count FROM actions WHERE timestamp >= ?',
-                [$cutoff30d]
+                'SELECT COUNT(*) as count FROM actions WHERE timestamp >= ?' . $filterClause,
+                $params
             );
             $stats['actions_30d'] = $result !== null ? (int)$result['count'] : 0;
 
@@ -176,6 +192,33 @@ class ActionTracker
         } catch (PDOException $e) {
             return [];
         }
+    }
+
+    /**
+     * Build WHERE filter conditions from filters array
+     *
+     * @param array $filters Filters (ip, installation_id, version)
+     * @param array $params Query params array (modified by reference)
+     * @param string $tablePrefix Optional table alias prefix (e.g. 'a')
+     * @return string SQL condition string (starts with ' AND ' if non-empty)
+     */
+    private function buildFilterConditions(array $filters, array &$params, string $tablePrefix = ''): string
+    {
+        $conditions = [];
+        $p = $tablePrefix ? $tablePrefix . '.' : '';
+        if (!empty($filters['ip'])) {
+            $conditions[] = "{$p}ip_address = ?";
+            $params[] = $filters['ip'];
+        }
+        if (!empty($filters['installation_id'])) {
+            $conditions[] = "{$p}installation_id = ?";
+            $params[] = $filters['installation_id'];
+        }
+        if (!empty($filters['version'])) {
+            $conditions[] = "{$p}installation_id IN (SELECT DISTINCT installation_id FROM installations WHERE plugin_version = ? AND installation_id IS NOT NULL AND installation_id != '')";
+            $params[] = $filters['version'];
+        }
+        return $conditions ? ' AND ' . implode(' AND ', $conditions) : '';
     }
 
     /**
@@ -203,21 +246,26 @@ class ActionTracker
      * Get top actions by count
      *
      * @param int $limit Maximum number of actions to return
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Top actions with unique visitor counts
      */
-    public function getTopActions(int $limit = 10): array
+    public function getTopActions(int $limit = 10, array $filters = []): array
     {
         try {
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
+            $params[] = $limit;
             return $this->db->fetchAll(
                 'SELECT
                     action_name,
                     COUNT(*) as total_count,
                     COUNT(DISTINCT ip_address) as unique_visitors
                  FROM actions
+                 WHERE 1=1' . $filterClause . '
                  GROUP BY action_name
                  ORDER BY total_count DESC
                  LIMIT ?',
-                [$limit]
+                $params
             );
         } catch (PDOException $e) {
             return [];
@@ -242,11 +290,14 @@ class ActionTracker
     /**
      * Get visitor summary grouped by IP address
      *
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Visitor data with actions used and execution timestamps
      */
-    public function getVisitorSummary(): array
+    public function getVisitorSummary(array $filters = []): array
     {
         try {
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             return $this->db->fetchAll(
                 'SELECT
                     ip_address,
@@ -255,9 +306,10 @@ class ActionTracker
                     FROM_UNIXTIME(MAX(timestamp)) AS last_executed,
                     COUNT(*) as total_actions
                  FROM actions
-                 WHERE ip_address IS NOT NULL
+                 WHERE ip_address IS NOT NULL' . $filterClause . '
                  GROUP BY ip_address
-                 ORDER BY ip_address'
+                 ORDER BY ip_address',
+                $params
             );
         } catch (PDOException $e) {
             return [];

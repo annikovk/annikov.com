@@ -72,9 +72,10 @@ class InstallationTracker
     /**
      * Get installation statistics
      *
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Statistics data
      */
-    public function getStats(): array
+    public function getStats(array $filters = []): array
     {
         try {
             $stats = [
@@ -88,52 +89,67 @@ class InstallationTracker
             ];
 
             // Total installation reports
-            $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM installations');
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
+            $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM installations WHERE 1=1' . $filterClause, $params);
             $stats['total_installations'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique installations (based on device IDs with no overlap)
-            $stats['unique_installations'] = $this->getUniqueInstallationCount();
+            $stats['unique_installations'] = $this->getUniqueInstallationCount($filters);
 
             // Unique installations in last 24 hours
             $cutoff24h = time() - (24 * 3600);
+            $params = [$cutoff24h];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
                 'SELECT COUNT(DISTINCT installation_id) as count
                  FROM installations
-                 WHERE timestamp >= ? AND installation_id IS NOT NULL AND installation_id != ""',
-                [$cutoff24h]
+                 WHERE timestamp >= ? AND installation_id IS NOT NULL AND installation_id != ""' . $filterClause,
+                $params
             );
             $stats['installations_24h'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique installations in last 7 days
             $cutoff7d = time() - (7 * 24 * 3600);
+            $params = [$cutoff7d];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
                 'SELECT COUNT(DISTINCT installation_id) as count
                  FROM installations
-                 WHERE timestamp >= ? AND installation_id IS NOT NULL AND installation_id != ""',
-                [$cutoff7d]
+                 WHERE timestamp >= ? AND installation_id IS NOT NULL AND installation_id != ""' . $filterClause,
+                $params
             );
             $stats['installations_7d'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique installations in last 30 days
             $cutoff30d = time() - (30 * 24 * 3600);
+            $params = [$cutoff30d];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
                 'SELECT COUNT(DISTINCT installation_id) as count
                  FROM installations
-                 WHERE timestamp >= ? AND installation_id IS NOT NULL AND installation_id != ""',
-                [$cutoff30d]
+                 WHERE timestamp >= ? AND installation_id IS NOT NULL AND installation_id != ""' . $filterClause,
+                $params
             );
             $stats['installations_30d'] = $result !== null ? (int)$result['count'] : 0;
 
             // Platform breakdown
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $stats['platform_breakdown'] = $this->db->fetchAll(
-                'SELECT platform, COUNT(*) as count FROM installations GROUP BY platform ORDER BY count DESC'
+                'SELECT platform, COUNT(*) as count FROM installations WHERE 1=1' . $filterClause . ' GROUP BY platform ORDER BY count DESC',
+                $params
             );
 
             // Yandex Music detection rate
             $totalInstalls = $stats['total_installations'];
             if ($totalInstalls > 0) {
+                $params = [];
+                $filterClause = $this->buildFilterConditions($filters, $params);
+                $params[] = 1;
                 $result = $this->db->fetchOne(
-                    'SELECT COUNT(*) as count FROM installations WHERE yandex_music_connected = 1'
+                    'SELECT COUNT(*) as count FROM installations WHERE 1=1' . $filterClause . ' AND yandex_music_connected = ?',
+                    $params
                 );
                 $connected = $result !== null ? (int)$result['count'] : 0;
                 $stats['yandex_music_detection_rate'] = round(($connected / $totalInstalls) * 100, 1);
@@ -150,15 +166,19 @@ class InstallationTracker
      * Get unique installation count
      * Counts distinct installation_ids (each installation_id represents one unique installation)
      *
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return int Unique installation count
      */
-    public function getUniqueInstallationCount(): int
+    public function getUniqueInstallationCount(array $filters = []): int
     {
         try {
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
                 'SELECT COUNT(DISTINCT installation_id) as count
                  FROM installations
-                 WHERE installation_id IS NOT NULL AND installation_id != ""'
+                 WHERE installation_id IS NOT NULL AND installation_id != ""' . $filterClause,
+                $params
             );
             return $result !== null ? (int)$result['count'] : 0;
 
@@ -171,11 +191,15 @@ class InstallationTracker
      * Get recent installation reports (latest report for each unique installation_id)
      *
      * @param int $limit Maximum number of installations to return
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Recent installations
      */
-    public function getRecentInstallations(int $limit = 50): array
+    public function getRecentInstallations(int $limit = 50, array $filters = []): array
     {
         try {
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params, 'i1');
+            $params[] = $limit;
             // Get the latest report for each installation_id
             return $this->db->fetchAll(
                 'SELECT i1.*
@@ -186,9 +210,10 @@ class InstallationTracker
                      WHERE installation_id IS NOT NULL AND installation_id != ""
                      GROUP BY installation_id
                  ) i2 ON i1.id = i2.max_id
+                 WHERE 1=1' . $filterClause . '
                  ORDER BY i1.id DESC
                  LIMIT ?',
-                [$limit]
+                $params
             );
         } catch (PDOException $e) {
             return [];
@@ -198,11 +223,14 @@ class InstallationTracker
     /**
      * Get plugin version breakdown for pie chart (counts latest report per installation_id)
      *
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Array of ['version' => 'x.x.x', 'count' => N]
      */
-    public function getVersionBreakdown(): array
+    public function getVersionBreakdown(array $filters = []): array
     {
         try {
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params, 'i1');
             return $this->db->fetchAll(
                 'SELECT plugin_version as version, COUNT(*) as count
                  FROM (
@@ -214,9 +242,11 @@ class InstallationTracker
                          WHERE installation_id IS NOT NULL AND installation_id != ""
                          GROUP BY installation_id
                      ) i2 ON i1.id = i2.max_id
+                     WHERE 1=1' . $filterClause . '
                  ) latest
                  GROUP BY plugin_version
-                 ORDER BY count DESC'
+                 ORDER BY count DESC',
+                $params
             );
         } catch (PDOException $e) {
             return [];
@@ -227,11 +257,14 @@ class InstallationTracker
      * Get OS distribution breakdown for pie chart (counts latest report per installation_id)
      * OS is combination of platform and os_release
      *
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Array of ['os' => 'platform os_release', 'count' => N]
      */
-    public function getOSBreakdown(): array
+    public function getOSBreakdown(array $filters = []): array
     {
         try {
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params, 'i1');
             return $this->db->fetchAll(
                 'SELECT
                     CONCAT(platform, \' \', COALESCE(os_release, \'unknown\')) as os,
@@ -245,13 +278,42 @@ class InstallationTracker
                          WHERE installation_id IS NOT NULL AND installation_id != ""
                          GROUP BY installation_id
                      ) i2 ON i1.id = i2.max_id
+                     WHERE 1=1' . $filterClause . '
                  ) latest
                  GROUP BY os
-                 ORDER BY count DESC'
+                 ORDER BY count DESC',
+                $params
             );
         } catch (PDOException $e) {
             return [];
         }
+    }
+
+    /**
+     * Build WHERE filter conditions from filters array
+     *
+     * @param array $filters Filters (ip, installation_id, version)
+     * @param array $params Query params array (modified by reference)
+     * @param string $tablePrefix Optional table alias prefix (e.g. 'i1')
+     * @return string SQL condition string (starts with ' AND ' if non-empty)
+     */
+    private function buildFilterConditions(array $filters, array &$params, string $tablePrefix = ''): string
+    {
+        $conditions = [];
+        $p = $tablePrefix ? $tablePrefix . '.' : '';
+        if (!empty($filters['ip'])) {
+            $conditions[] = "{$p}ip_address = ?";
+            $params[] = $filters['ip'];
+        }
+        if (!empty($filters['installation_id'])) {
+            $conditions[] = "{$p}installation_id = ?";
+            $params[] = $filters['installation_id'];
+        }
+        if (!empty($filters['version'])) {
+            $conditions[] = "{$p}plugin_version = ?";
+            $params[] = $filters['version'];
+        }
+        return $conditions ? ' AND ' . implode(' AND ', $conditions) : '';
     }
 
     /**

@@ -61,9 +61,10 @@ class ErrorTracker
     /**
      * Get error statistics
      *
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Statistics data
      */
-    public function getStats(): array
+    public function getStats(array $filters = []): array
     {
         try {
             $stats = [
@@ -76,24 +77,28 @@ class ErrorTracker
             ];
 
             // Total error reports
-            $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM errors');
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params);
+            $result = $this->db->fetchOne('SELECT COUNT(*) as count FROM errors WHERE 1=1' . $filterClause, $params);
             $stats['total_errors'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique users affected (all time)
-            $stats['unique_users_affected'] = $this->getUniqueErroringUsers('all');
+            $stats['unique_users_affected'] = $this->getUniqueErroringUsers('all', $filters);
 
             // Errors in last 24 hours
             $cutoff24h = time() - (24 * 3600);
+            $params = [$cutoff24h];
+            $filterClause = $this->buildFilterConditions($filters, $params);
             $result = $this->db->fetchOne(
-                'SELECT COUNT(*) as count FROM errors WHERE timestamp >= ?',
-                [$cutoff24h]
+                'SELECT COUNT(*) as count FROM errors WHERE timestamp >= ?' . $filterClause,
+                $params
             );
             $stats['errors_24h'] = $result !== null ? (int)$result['count'] : 0;
 
             // Unique users affected in different time periods
-            $stats['users_affected_24h'] = $this->getUniqueErroringUsers('24h');
-            $stats['users_affected_7d'] = $this->getUniqueErroringUsers('7d');
-            $stats['users_affected_30d'] = $this->getUniqueErroringUsers('30d');
+            $stats['users_affected_24h'] = $this->getUniqueErroringUsers('24h', $filters);
+            $stats['users_affected_7d'] = $this->getUniqueErroringUsers('7d', $filters);
+            $stats['users_affected_30d'] = $this->getUniqueErroringUsers('30d', $filters);
 
             return $stats;
 
@@ -106,9 +111,10 @@ class ErrorTracker
      * Get unique users that reported errors in a time period
      *
      * @param string $period Time period ('24h', '7d', '30d', or 'all')
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return int Count of unique users
      */
-    public function getUniqueErroringUsers(string $period): int
+    public function getUniqueErroringUsers(string $period, array $filters = []): int
     {
         try {
             $sql = 'SELECT COUNT(DISTINCT installation_id) as count
@@ -131,6 +137,8 @@ class ErrorTracker
                 }
             }
 
+            $sql .= $this->buildFilterConditions($filters, $params);
+
             $result = $this->db->fetchOne($sql, $params);
             return $result !== null ? (int)$result['count'] : 0;
 
@@ -143,13 +151,18 @@ class ErrorTracker
      * Get recent error reports with joined installation data, grouped by installation_id and time
      *
      * @param int $limit Maximum number of error groups to return
+     * @param array $filters Optional filters (ip, installation_id, version)
      * @return array Recent error groups
      */
-    public function getRecentErrors(int $limit = 50): array
+    public function getRecentErrors(int $limit = 50, array $filters = []): array
     {
         try {
             // Fetch more errors than limit to have enough data for grouping
             $fetchLimit = $limit * 4;
+
+            $params = [];
+            $filterClause = $this->buildFilterConditions($filters, $params, 'e');
+            $params[] = $fetchLimit;
 
             // Get recent errors with latest installation data joined.
             // platform comes directly from errors table (e.*).
@@ -173,9 +186,10 @@ class ErrorTracker
                         (e.platform IS NOT NULL AND e.platform != "" AND i.platform = e.platform)
                         OR (e.platform IS NULL OR e.platform = "")
                     )
+                WHERE 1=1' . $filterClause . '
                 ORDER BY e.id DESC
                 LIMIT ?',
-                [$fetchLimit]
+                $params
             );
 
             // Group errors by installation_id and time proximity (10 seconds)
@@ -333,6 +347,33 @@ class ErrorTracker
             'error_message' => substr(trim($data['error_message']), 0, 2000),
             'stack_trace' => isset($data['stack_trace']) ? substr($data['stack_trace'], 0, 10000) : null,
         ];
+    }
+
+    /**
+     * Build WHERE filter conditions from filters array
+     *
+     * @param array $filters Filters (ip, installation_id, version)
+     * @param array $params Query params array (modified by reference)
+     * @param string $tablePrefix Optional table alias prefix (e.g. 'e')
+     * @return string SQL condition string (starts with ' AND ' if non-empty)
+     */
+    private function buildFilterConditions(array $filters, array &$params, string $tablePrefix = ''): string
+    {
+        $conditions = [];
+        $p = $tablePrefix ? $tablePrefix . '.' : '';
+        if (!empty($filters['ip'])) {
+            $conditions[] = "{$p}ip_address = ?";
+            $params[] = $filters['ip'];
+        }
+        if (!empty($filters['installation_id'])) {
+            $conditions[] = "{$p}installation_id = ?";
+            $params[] = $filters['installation_id'];
+        }
+        if (!empty($filters['version'])) {
+            $conditions[] = "{$p}installation_id IN (SELECT DISTINCT installation_id FROM installations WHERE plugin_version = ? AND installation_id IS NOT NULL AND installation_id != '')";
+            $params[] = $filters['version'];
+        }
+        return $conditions ? ' AND ' . implode(' AND ', $conditions) : '';
     }
 
     /**

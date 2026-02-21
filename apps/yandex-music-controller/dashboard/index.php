@@ -12,26 +12,53 @@ require_once dirname(__DIR__) . '/lib/ActionTracker.php';
 require_once dirname(__DIR__) . '/lib/InstallationTracker.php';
 require_once dirname(__DIR__) . '/lib/ErrorTracker.php';
 
+// Read filters from GET (sanitized)
+$filterVersion    = isset($_GET['version'])         && $_GET['version'] !== ''         ? substr(trim($_GET['version']), 0, 50)        : null;
+$filterIP         = isset($_GET['ip'])              && $_GET['ip'] !== ''              ? substr(trim($_GET['ip']), 0, 45)             : null;
+$filterInstallId  = isset($_GET['installation_id']) && $_GET['installation_id'] !== '' ? substr(trim($_GET['installation_id']), 0, 255) : null;
+$activeFilters = array_filter(['version' => $filterVersion, 'ip' => $filterIP, 'installation_id' => $filterInstallId]);
+
 try {
     $db = Database::getInstance($config['database']);
     $tracker = new ActionTracker($db);
     $installationTracker = new InstallationTracker($db);
 
-    // Get statistics
-    $stats = $tracker->getStats();
-    $topActions = $tracker->getTopActions(10);
-    $visitorSummary = $tracker->getVisitorSummary();
+    // Get statistics (filtered)
+    $stats = $tracker->getStats($activeFilters);
+    $topActions = $tracker->getTopActions(10, $activeFilters);
+    $visitorSummary = $tracker->getVisitorSummary($activeFilters);
 
-    // Get installation statistics
-    $installationStats = $installationTracker->getStats();
-    $versionBreakdown = $installationTracker->getVersionBreakdown();
-    $osBreakdown = $installationTracker->getOSBreakdown();
-    $recentInstallations = $installationTracker->getRecentInstallations(50);
+    // Get installation statistics (filtered)
+    $installationStats = $installationTracker->getStats($activeFilters);
+    $versionBreakdown = $installationTracker->getVersionBreakdown($activeFilters);
+    $osBreakdown = $installationTracker->getOSBreakdown($activeFilters);
+    $recentInstallations = $installationTracker->getRecentInstallations(50, $activeFilters);
 
-    // Get error statistics
+    // Get error statistics (filtered)
     $errorTracker = new ErrorTracker($db);
-    $errorStats = $errorTracker->getStats();
-    $recentErrors = $errorTracker->getRecentErrors(50);
+    $errorStats = $errorTracker->getStats($activeFilters);
+    $recentErrors = $errorTracker->getRecentErrors(50, $activeFilters);
+
+    // Fetch available filter options (always unfiltered, for dropdown population)
+    $availableVersions = $db->fetchAll(
+        "SELECT DISTINCT plugin_version as version FROM installations WHERE plugin_version IS NOT NULL AND plugin_version != '' ORDER BY plugin_version DESC LIMIT 100"
+    );
+    $availableIPs = $db->fetchAll(
+        "SELECT ip_address FROM (
+            SELECT ip_address FROM actions WHERE ip_address IS NOT NULL AND ip_address != ''
+            UNION
+            SELECT ip_address FROM installations WHERE ip_address IS NOT NULL AND ip_address != ''
+            UNION
+            SELECT ip_address FROM errors WHERE ip_address IS NOT NULL AND ip_address != ''
+        ) c GROUP BY ip_address ORDER BY ip_address LIMIT 500"
+    );
+    $availableInstallationIds = $db->fetchAll(
+        "SELECT installation_id FROM (
+            SELECT installation_id FROM installations WHERE installation_id IS NOT NULL AND installation_id != ''
+            UNION
+            SELECT installation_id FROM errors WHERE installation_id IS NOT NULL AND installation_id != ''
+        ) c GROUP BY installation_id ORDER BY installation_id LIMIT 500"
+    );
 
 } catch (Exception $e) {
     $stats = [];
@@ -43,6 +70,9 @@ try {
     $recentInstallations = [];
     $errorStats = [];
     $recentErrors = [];
+    $availableVersions = [];
+    $availableIPs = [];
+    $availableInstallationIds = [];
 }
 ?>
 <!DOCTYPE html>
@@ -537,6 +567,92 @@ try {
                 max-width: 95%;
             }
         }
+
+        /* Filter Bar */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .filter-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            white-space: nowrap;
+        }
+
+        .filter-select {
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 13px;
+            min-width: 160px;
+            cursor: pointer;
+            transition: border-color 0.15s ease;
+        }
+
+        .filter-select:hover,
+        .filter-select:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        .filter-select.active {
+            border-color: var(--accent);
+            background: var(--accent-subtle);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .filter-clear {
+            padding: 7px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .filter-clear:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .filter-active-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            background: var(--accent);
+            color: white;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            .filter-bar {
+                gap: 8px;
+            }
+
+            .filter-select {
+                min-width: 130px;
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -570,6 +686,46 @@ try {
                     id="tab-btn-errors">
                     Errors
                 </button>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <span class="filter-label">Filter:</span>
+
+                <select id="filterVersion" class="filter-select <?= $filterVersion ? 'active' : '' ?>">
+                    <option value="">All Versions</option>
+                    <?php foreach ($availableVersions as $v): ?>
+                    <option value="<?= htmlspecialchars($v['version']) ?>"
+                        <?= $filterVersion === $v['version'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($v['version']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <select id="filterIP" class="filter-select <?= $filterIP ? 'active' : '' ?>">
+                    <option value="">All IPs</option>
+                    <?php foreach ($availableIPs as $row): ?>
+                    <option value="<?= htmlspecialchars($row['ip_address']) ?>"
+                        <?= $filterIP === $row['ip_address'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($row['ip_address']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <select id="filterInstallationId" class="filter-select <?= $filterInstallId ? 'active' : '' ?>">
+                    <option value="">All Installations</option>
+                    <?php foreach ($availableInstallationIds as $row): ?>
+                    <option value="<?= htmlspecialchars($row['installation_id']) ?>"
+                        <?= $filterInstallId === $row['installation_id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars(substr($row['installation_id'], 0, 20)) ?>…
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <?php if (!empty($activeFilters)): ?>
+                <button id="clearFilters" class="filter-clear">✕ Clear filters</button>
+                <span class="filter-active-badge"><?= count($activeFilters) ?> active</span>
+                <?php endif; ?>
             </div>
 
             <!-- Actions Tab -->
@@ -1012,10 +1168,40 @@ try {
             rows.forEach(row => tbody.appendChild(row));
         }
 
+        // Filter bar
+        function initFilters() {
+            ['filterVersion', 'filterIP', 'filterInstallationId'].forEach(id => {
+                document.getElementById(id)?.addEventListener('change', applyFilters);
+            });
+            document.getElementById('clearFilters')?.addEventListener('click', () => {
+                ['filterVersion', 'filterIP', 'filterInstallationId'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                applyFilters();
+            });
+        }
+
+        function applyFilters() {
+            const params = new URLSearchParams();
+            const version = document.getElementById('filterVersion')?.value;
+            const ip = document.getElementById('filterIP')?.value;
+            const instId = document.getElementById('filterInstallationId')?.value;
+            if (version) params.set('version', version);
+            if (ip) params.set('ip', ip);
+            if (instId) params.set('installation_id', instId);
+            const hash = window.location.hash || '#actions';
+            const qs = params.toString();
+            window.location.href = (qs ? '?' + qs : window.location.pathname) + hash;
+        }
+
         // Initialize everything on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize tabs
             initTabs();
+
+            // Initialize filters
+            initFilters();
 
             // Initialize sorting for all tables
             document.querySelectorAll('.sortable').forEach(header => {
