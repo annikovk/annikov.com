@@ -833,10 +833,6 @@ try {
                 <?php if (!empty($installationStats)): ?>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Total Reports</div>
-                        <div class="stat-value"><?= number_format($installationStats['total_installations']) ?></div>
-                    </div>
-                    <div class="stat-card">
                         <div class="stat-label">Unique Installations</div>
                         <div class="stat-value"><?= number_format($installationStats['unique_installations']) ?></div>
                     </div>
@@ -855,6 +851,10 @@ try {
                     <div class="stat-card">
                         <div class="stat-label">YM Detection Rate</div>
                         <div class="stat-value"><?= $installationStats['yandex_music_detection_rate'] ?>%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">YM Connection Rate</div>
+                        <div class="stat-value"><?= $installationStats['yandex_music_connection_rate'] ?>%</div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -898,7 +898,15 @@ try {
                                 <td><?= htmlspecialchars($installation['ip_address'] ?? 'N/A') ?></td>
                                 <td><?= htmlspecialchars($installation['platform']) ?></td>
                                 <td><?= htmlspecialchars($installation['plugin_version']) ?></td>
-                                <td><?= $installation['yandex_music_connected'] ? '✓ Connected' : '✗ Not Connected' ?></td>
+                                <td><?php
+                                    if ($installation['yandex_music_connected']) {
+                                        echo '✓ Connected';
+                                    } elseif (!empty($installation['yandex_music_path'])) {
+                                        echo '✓ Detected';
+                                    } else {
+                                        echo '✗ Not Detected';
+                                    }
+                                ?></td>
                                 <td class="timestamp" data-value="<?= date('Y-m-d H:i:s', $installation['timestamp']) ?>"><?= date('Y-m-d H:i:s', $installation['timestamp']) ?></td>
                             </tr>
                             <?php endforeach; ?>

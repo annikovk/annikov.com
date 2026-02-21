@@ -141,18 +141,45 @@ class InstallationTracker
                 $params
             );
 
-            // Yandex Music detection rate
-            $totalInstalls = $stats['total_installations'];
-            if ($totalInstalls > 0) {
+            // Yandex Music rates (per unique installation, latest report per installation_id)
+            $uniqueTotal = $stats['unique_installations'];
+            $stats['yandex_music_detection_rate'] = 0;
+            $stats['yandex_music_connection_rate'] = 0;
+            if ($uniqueTotal > 0) {
+                // Build the latest-report subquery once for both rates
+                $latestSubquery = '
+                     SELECT i1.yandex_music_connected, i1.yandex_music_path
+                     FROM installations i1
+                     INNER JOIN (
+                         SELECT installation_id, MAX(id) as max_id
+                         FROM installations
+                         WHERE installation_id IS NOT NULL AND installation_id != ""
+                         GROUP BY installation_id
+                     ) i2 ON i1.id = i2.max_id
+                     WHERE 1=1';
+
+                // Detection rate: detected (path non-empty) OR connected
                 $params = [];
-                $filterClause = $this->buildFilterConditions($filters, $params);
-                $params[] = 1;
+                $filterClause = $this->buildFilterConditions($filters, $params, 'i1');
                 $result = $this->db->fetchOne(
-                    'SELECT COUNT(*) as count FROM installations WHERE 1=1' . $filterClause . ' AND yandex_music_connected = ?',
+                    'SELECT COUNT(*) as count FROM (' . $latestSubquery . $filterClause . ') latest
+                     WHERE yandex_music_connected = 1
+                        OR (yandex_music_path IS NOT NULL AND yandex_music_path != "")',
+                    $params
+                );
+                $detected = $result !== null ? (int)$result['count'] : 0;
+                $stats['yandex_music_detection_rate'] = round(($detected / $uniqueTotal) * 100, 1);
+
+                // Connection rate: connected only
+                $params = [];
+                $filterClause = $this->buildFilterConditions($filters, $params, 'i1');
+                $result = $this->db->fetchOne(
+                    'SELECT COUNT(*) as count FROM (' . $latestSubquery . $filterClause . ') latest
+                     WHERE yandex_music_connected = 1',
                     $params
                 );
                 $connected = $result !== null ? (int)$result['count'] : 0;
-                $stats['yandex_music_detection_rate'] = round(($connected / $totalInstalls) * 100, 1);
+                $stats['yandex_music_connection_rate'] = round(($connected / $uniqueTotal) * 100, 1);
             }
 
             return $stats;
