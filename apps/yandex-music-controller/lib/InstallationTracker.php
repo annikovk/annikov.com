@@ -84,6 +84,9 @@ class InstallationTracker
                 'installations_24h' => 0,
                 'installations_7d' => 0,
                 'installations_30d' => 0,
+                'new_installations_24h' => 0,
+                'new_installations_7d' => 0,
+                'new_installations_30d' => 0,
                 'platform_breakdown' => [],
                 'yandex_music_detection_rate' => 0,
             ];
@@ -132,6 +135,29 @@ class InstallationTracker
                 $params
             );
             $stats['installations_30d'] = $result !== null ? (int)$result['count'] : 0;
+
+            // New unique installations per period (first-ever report for that installation_id falls within period)
+            foreach ([
+                'new_installations_24h' => time() - (24 * 3600),
+                'new_installations_7d'  => time() - (7 * 24 * 3600),
+                'new_installations_30d' => time() - (30 * 24 * 3600),
+            ] as $key => $cutoff) {
+                $params = [];
+                $filterClause = $this->buildFilterConditions($filters, $params);
+                $params[] = $cutoff;
+                $result = $this->db->fetchOne(
+                    'SELECT COUNT(*) as count
+                     FROM (
+                         SELECT installation_id, MIN(timestamp) as first_seen
+                         FROM installations
+                         WHERE installation_id IS NOT NULL AND installation_id != ""' . $filterClause . '
+                         GROUP BY installation_id
+                     ) first_reports
+                     WHERE first_seen >= ?',
+                    $params
+                );
+                $stats[$key] = $result !== null ? (int)$result['count'] : 0;
+            }
 
             // Platform breakdown
             $params = [];

@@ -226,6 +226,12 @@ try {
             letter-spacing: -0.5px;
         }
 
+        .stat-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
         /* Sections */
         .section {
             background: var(--bg-secondary);
@@ -839,14 +845,17 @@ try {
                     <div class="stat-card">
                         <div class="stat-label">Installations (24h)</div>
                         <div class="stat-value"><?= number_format($installationStats['installations_24h']) ?></div>
+                        <div class="stat-sub"><?= number_format($installationStats['new_installations_24h']) ?> new</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Installations (7d)</div>
                         <div class="stat-value"><?= number_format($installationStats['installations_7d']) ?></div>
+                        <div class="stat-sub"><?= number_format($installationStats['new_installations_7d']) ?> new</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Installations (30d)</div>
                         <div class="stat-value"><?= number_format($installationStats['installations_30d']) ?></div>
+                        <div class="stat-sub"><?= number_format($installationStats['new_installations_30d']) ?> new</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">YM Detection Rate</div>
